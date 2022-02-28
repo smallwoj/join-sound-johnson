@@ -11,4 +11,8 @@ dotenv = "0.15.0"
 serenity = { version = "0.10.9", default-features = false, features = ["voice", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "framework", "standard_framework", "cache"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 songbird = "0.2.0"
-poise = "0.0.0"
+
+[dependencies.poise]
+git = "https://github.com/kangalioo/poise"
+features = ["collector"]
+branch = "develop"
