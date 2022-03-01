@@ -1,3 +1,5 @@
+mod database;
+
 use poise::serenity_prelude as serenity;
 
 type Data = ();
@@ -54,7 +56,12 @@ async fn main()
 
     poise::Framework::build()
         .token(token)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(()) }))
+        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { 
+            println!("Bot has connected to discord!");
+            database::connect();
+
+            Ok(())
+        }))
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
