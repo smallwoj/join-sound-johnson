@@ -59,7 +59,6 @@ async fn main()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { 
             println!("Bot has connected to discord!");
-            database::connect();
 
             Ok(())
         }))

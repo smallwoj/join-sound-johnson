@@ -6,7 +6,7 @@ use diesel::{
 use super::schema::joinsounds;
 
 #[derive(Queryable)]
-pub struct JoinSound
+pub struct JoinSounds
 {
     id: i32,
     discord_id: String,
