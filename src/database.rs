@@ -1,14 +1,17 @@
+use diesel::Queryable;
+
 use poise::serenity_prelude as serenity;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
+#[derive(Queryable)]
 pub struct JoinSound
 {
-    id: u32,
+    id: i32,
     discord_id: String,
-    file_path: String,
-    url: String,
     guild_id: String,
+    file_path: String,
+    video_url: String,
 }
 
 pub fn connect()
