@@ -31,17 +31,29 @@ async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
     Ok(())
 }
 
+/// Set a global join sound
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn set(
+    ctx: Context<'_>,
+    #[description = "Joinsound URL."] url: String,
+    #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
+) -> Result<(), Error>
+{
+    println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main()
 {
     dotenv::dotenv().ok();
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
-    let application_id = std::env::var("DISCORD_APPLICATION_ID").expect("Expected an application id in the environment");
+    let _application_id = std::env::var("APPLICATION_ID").expect("Expected an application id in the environment");
 
     poise::Framework::build()
         .token(token)
-        .application_id(application_id)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { Ok(()) }))
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
@@ -51,6 +63,7 @@ async fn main()
             commands: vec![
                 ping(),
                 register(),
+                set(),
             ],
             ..Default::default()
         })
