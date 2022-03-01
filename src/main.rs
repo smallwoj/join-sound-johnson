@@ -1,4 +1,5 @@
 mod database;
+#[macro_use] extern crate diesel;
 
 use poise::serenity_prelude as serenity;
 
