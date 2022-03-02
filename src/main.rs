@@ -1,4 +1,3 @@
-mod database;
 #[macro_use] extern crate diesel;
 
 use poise::serenity_prelude as serenity;
@@ -6,6 +5,9 @@ use poise::serenity_prelude as serenity;
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
+
+mod database;
+mod youtube;
 
 const TOASTLORD_ID: serenity::UserId = serenity::UserId(90237200909729792);
 
@@ -44,6 +46,19 @@ async fn set(
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
+    if let Err(why) = match youtube::get_video_length(url)
+    {
+        Ok(length) => {
+            ctx.say(format!("Length: {:?}", length)).await
+        },
+        Err(why) => {
+            ctx.say(format!("Error: {}", why)).await
+        },
+    }
+    {
+        println!("Error sending message: {}", why);
+    }
+
     Ok(())
 }
 
@@ -59,6 +74,7 @@ async fn main()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { 
             println!("Bot has connected to discord!");
+            println!("{}", database::has_sound(TOASTLORD_ID, None));
 
             Ok(())
         }))
