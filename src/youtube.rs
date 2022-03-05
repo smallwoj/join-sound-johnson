@@ -1,7 +1,11 @@
+use std::fs;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use chrono::Duration;
 
-pub fn get_video_length(url: String) -> Result<Duration, String>
+use poise::serenity_prelude as serenity;
+
+pub fn get_video_length(url: &String) -> Result<Duration, String>
 {
     let output = Command::new("youtube-dl")
         .arg("--get-duration")
@@ -84,4 +88,31 @@ pub fn get_video_length(url: String) -> Result<Duration, String>
     {
         return Err("Not a video!".to_string())
     }
+}
+
+pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<String, String>
+{
+    let folder = if let Some(guild) = guild_id
+    {
+        Path::new(".")
+            .join("media")
+            .join(discord_id.to_string())
+            .join(guild.to_string())
+    }
+    else
+    {
+        Path::new(".")
+            .join("media")
+            .join(discord_id.to_string())
+    };
+
+    if !folder.exists()
+    {
+        if let Err(_why) = fs::create_dir_all(&folder)
+        {
+            return Err(String::from("Could not create directory"));
+        }
+    }
+
+    Ok(format!("{:?}", fs::canonicalize(folder)))
 }

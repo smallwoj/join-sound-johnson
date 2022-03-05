@@ -46,9 +46,18 @@ async fn set(
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
-    if let Err(why) = match youtube::get_video_length(url)
+    if let Err(why) = match youtube::get_video_length(&url)
     {
         Ok(length) => {
+            let guild = if local 
+            {
+                ctx.guild_id()
+            }
+            else
+            {
+                None
+            };
+            println!("{:?}", youtube::download_video(&url, ctx.author().id, guild));
             ctx.say(format!("Length: {:?}", length)).await
         },
         Err(why) => {
