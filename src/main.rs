@@ -46,6 +46,10 @@ async fn set(
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
+    if let Err(why) = ctx.say("Downloading...").await
+    {
+        println!("Error sending message: {}", why);
+    }
     if let Err(why) = match youtube::get_video_length(&url)
     {
         Ok(length) => {

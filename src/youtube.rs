@@ -92,6 +92,7 @@ pub fn get_video_length(url: &String) -> Result<Duration, String>
 
 pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<String, String>
 {
+    // Build the destination folder
     let folder = if let Some(guild) = guild_id
     {
         Path::new(".")
@@ -106,11 +107,36 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
             .join(discord_id.to_string())
     };
 
+    // Create the folder if it does not exist
+
     if !folder.exists()
     {
         if let Err(_why) = fs::create_dir_all(&folder)
         {
             return Err(String::from("Could not create directory"));
+        }
+    }
+
+    let file = folder.join("joinsound.mp3");
+    if let Ok(_) = fs::write(&file, "")
+    {    
+        if let Ok(file_path) = file.canonicalize()
+        {
+            // Save the video to disk
+            let output = Command::new("youtube-dl")
+                .arg("--extract-audio")
+                .arg("--audio-format")
+                .arg("mp3")
+                .arg("--no-continue")
+                .arg("-o")
+                .arg(file_path)
+                .arg(url)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .expect("Failed to download video");
+            println!("stdout: {:?}", String::from_utf8(output.stdout).unwrap());
+            println!("stderr: {:?}", String::from_utf8(output.stderr).unwrap());
         }
     }
 
