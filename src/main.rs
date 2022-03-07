@@ -36,7 +36,7 @@ async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
     Ok(())
 }
 
-/// Set a global join sound
+/// Set a join sound
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set(
     ctx: Context<'_>,

@@ -8,11 +8,11 @@ use super::schema::joinsounds;
 #[derive(Queryable)]
 pub struct JoinSounds
 {
-    id: i32,
-    discord_id: String,
-    guild_id: String,
-    file_path: String,
-    video_url: String,
+    pub id: i32,
+    pub discord_id: String,
+    pub guild_id: String,
+    pub file_path: String,
+    pub video_url: String,
 }
 
 #[derive(Insertable)]
