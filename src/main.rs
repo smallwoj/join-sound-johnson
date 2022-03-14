@@ -52,7 +52,16 @@ async fn set(
     }
     let guild_id = match ctx.guild()
     {
-        Some(guild) => Some(guild.id),
+        Some(guild) => {
+            if local
+            {
+                Some(guild.id)
+            }
+            else
+            {
+                None
+            }
+        },
         None => None,
     };
 
