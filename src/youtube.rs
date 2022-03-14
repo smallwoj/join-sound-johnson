@@ -136,7 +136,19 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
                 .output()
                 .expect("Failed to download video");
             println!("stdout: {:?}", String::from_utf8(output.stdout).unwrap());
-            println!("stderr: {:?}", String::from_utf8(output.stderr).unwrap());
+            match String::from_utf8(output.stderr)
+            {
+                Ok(error) => {
+                    if error.len() > 0 
+                    {
+                        println!("{}", error);
+                        return Err("Error when trying to download video".to_string());
+                    }
+                },
+                Err(why) => {
+                    return Err(why.to_string());
+                }
+            };
         }
     }
 
