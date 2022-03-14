@@ -9,9 +9,18 @@ edition = "2018"
 diesel = { version = "1.4.8", features = ["mysql"] }
 chrono = "0.4"
 dotenv = "0.15.0"
-serenity = { version = "0.10.9", default-features = false, features = ["voice", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "framework", "standard_framework", "cache"] }
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
-songbird = "0.2.0"
+[dependencies.serenity]
+git = "https://github.com/serenity-rs/serenity"
+# the `next` branch because `poise` depends on it 
+branch = "next"
+default-features = false
+features = ["voice", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "cache"]
+
+[dependencies.songbird]
+git = "https://github.com/serenity-rs/songbird"
+# the `next` branch so that `songbird` also pulls `serenity` from its github repository's `next` branch
+branch = "next"
 
 [dependencies.poise]
 git = "https://github.com/kangalioo/poise"

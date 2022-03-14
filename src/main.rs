@@ -1,6 +1,6 @@
 #[macro_use] extern crate diesel;
 
-use poise::serenity_prelude as serenity;
+use songbird::SerenityInit;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -8,31 +8,9 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 mod database;
 mod youtube;
+mod event_listener;
 
-const TOASTLORD_ID: serenity::UserId = serenity::UserId(90237200909729792);
-
-
-async fn event_listener(
-    _ctx: &serenity::Context,
-    event: &poise::Event<'_>,
-    _framework: &poise::Framework<Data, Error>,
-    _user_data: &Data,
-) -> Result<(), Error> {
-    match event {
-        poise::Event::Ready { data_about_bot } => {
-            println!("{} is connected!", data_about_bot.user.name)
-        }
-        poise::Event::VoiceStateUpdate {
-            old,
-            new,
-        } => {
-            println!("voice state update: {:?} -> {:?}", old, new);
-        }
-        _ => {}
-    }
-
-    Ok(())
-}
+const TOASTLORD_ID: poise::serenity_prelude::UserId = poise::serenity_prelude::UserId(90237200909729792);
 
 // Pong up
 #[poise::command(prefix_command, slash_command, track_edits)]
@@ -236,9 +214,10 @@ async fn main()
                 remove(),
             ],
             listener: |ctx, event, framework, user_data| {
-                Box::pin(event_listener(ctx, event, framework, user_data))
+                Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
             },
             ..Default::default()
         })
+        .client_settings(|c| c.register_songbird())
         .run().await.unwrap();
 }
