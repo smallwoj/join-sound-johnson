@@ -101,6 +101,48 @@ async fn set(
     Ok(())
 }
 
+/// Remove a joinsound
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn remove(
+    ctx: Context<'_>,
+    #[description = "If true, the joinsound local to this server will be removed."] #[flag] local: bool
+) -> Result<(), Error>
+{
+    if let Err(why) = ctx.say("Removing...").await
+    {
+        println!("Error sending message: {}", why);
+    }
+    let guild_id = match ctx.guild()
+    {
+        Some(guild) => {
+            if local
+            {
+                Some(guild.id)
+            }
+            else
+            {
+                None
+            }
+        },
+        None => None,
+    };
+
+    if let Err(why) = match database::remove_sound(ctx.author().id, guild_id)
+    {
+        Ok(_) => {
+            
+            ctx.say(format!("Successful!")).await
+        },
+        Err(why) => {
+            ctx.say(format!("Error: {}", why)).await
+        },
+    }
+    {
+        println!("Error sending message: {}", why);
+    }
+
+    Ok(())
+}
 #[tokio::main]
 async fn main()
 {
@@ -126,6 +168,7 @@ async fn main()
                 ping(),
                 register(),
                 set(),
+                remove(),
             ],
             ..Default::default()
         })

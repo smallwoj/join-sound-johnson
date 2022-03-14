@@ -4,7 +4,7 @@ use diesel::dsl::{
     exists,
 };
 use diesel::prelude::*;
-use std::env;
+use std::{env, fs};
 use std::path::{Path, PathBuf};
 
 use poise::serenity_prelude as serenity;
@@ -12,7 +12,7 @@ use poise::serenity_prelude as serenity;
 pub mod models;
 pub mod schema;
 
-use self::models::{JoinSounds, NewJoinSound};
+use self::models::NewJoinSound;
 use super::youtube;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -236,5 +236,75 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
 
 pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
 {
-    Ok(())
+    if has_sound(discord_id, guild_id)
+    {
+        if let Some(guild) = guild_id
+        {
+            let connection = connect();
+            let guild_str = guild.to_string();
+
+            // get file path to remove it
+            if let Ok(path) = schema::joinsounds::table
+                .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
+                .filter(schema::joinsounds::guild_id.eq(&guild_str))
+                .select(schema::joinsounds::file_path)
+                .first::<Option<String>>(&connection)
+            {
+                if let Some(joinsound_path) = path
+                {
+                    fs::remove_file(joinsound_path).expect("Error removing joinsound file");
+                }
+                else
+                {
+                    return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No sound to remove!")));
+                }
+            }
+            else
+            {
+                return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No sound to remove!")));
+            }
+        
+            diesel::delete(schema::joinsounds::table)
+                .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
+                .filter(schema::joinsounds::guild_id.eq(&guild_str))
+                .execute(&connection)
+                .expect("Error deleting joinsound");
+            return Ok(());
+        }
+        else
+        {
+            let connection = connect();
+            // get file path to remove it
+            if let Ok(path) = schema::joinsounds::table
+                .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
+                .filter(schema::joinsounds::guild_id.is_null())
+                .select(schema::joinsounds::file_path)
+                .first::<Option<String>>(&connection)
+            {
+                if let Some(joinsound_path) = path
+                {
+                    fs::remove_file(joinsound_path).expect("Error removing joinsound file");
+                }
+                else
+                {
+                    return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No sound to remove!")));
+                }
+            }
+            else
+            {
+                return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No sound to remove!")));
+            }
+
+            diesel::delete(schema::joinsounds::table)
+                .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
+                .filter(schema::joinsounds::guild_id.is_null())
+                .execute(&connection)
+                .expect("Error deleting joinsound");
+            return Ok(());
+        }
+    }
+    else
+    {
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "No sound to remove!")));
+    }
 }
