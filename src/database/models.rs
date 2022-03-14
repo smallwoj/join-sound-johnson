@@ -15,7 +15,7 @@ pub struct JoinSounds
     pub video_url: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, AsChangeset)]
 #[table_name="joinsounds"]
 pub struct NewJoinSound<'a>
 {

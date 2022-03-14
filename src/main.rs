@@ -65,18 +65,37 @@ async fn set(
         None => None,
     };
 
-    if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
+    if database::has_sound(ctx.author().id, guild_id)
     {
-        Ok(_) => {
-            
-            ctx.say(format!("Successful!")).await
-        },
-        Err(why) => {
-            ctx.say(format!("Error: {}", why)).await
-        },
+        if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
+        {
+            Ok(_) => {
+                
+                ctx.say(format!("Successful!")).await
+            },
+            Err(why) => {
+                ctx.say(format!("Error: {}", why)).await
+            },
+        }
+        {
+            println!("Error sending message: {}", why);
+        }
     }
+    else
     {
-        println!("Error sending message: {}", why);
+        if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
+        {
+            Ok(_) => {
+                
+                ctx.say(format!("Successful!")).await
+            },
+            Err(why) => {
+                ctx.say(format!("Error: {}", why)).await
+            },
+        }
+        {
+            println!("Error sending message: {}", why);
+        }
     }
 
     Ok(())

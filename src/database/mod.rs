@@ -165,6 +165,75 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
     }
 }
 
+pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
+{
+    // check video length
+    match youtube::get_video_length(&url.clone())
+    {
+        Ok(length) =>
+        {
+            if length > Duration::seconds(15)
+            {
+                return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Video is too long")));
+            }
+            else
+            {
+                if let Some(guild) = guild_id
+                {
+                    match youtube::download_video(&url, user_id, guild_id)
+                    {
+                        Ok(file_path) =>
+                        {
+                            let connection = connect();
+                            let guild_str = guild.to_string();
+                            let guild_option = Some(guild_str.as_str());
+                            let new_sound = NewJoinSound {
+                                discord_id: &user_id.to_string(),
+                                guild_id: guild_option,
+                                file_path: &file_path.to_string(),
+                                video_url: &url.clone(),
+                            };
+                            diesel::update(schema::joinsounds::table)
+                                .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+                                .filter(schema::joinsounds::guild_id.eq(&guild_str))
+                                .set(new_sound)
+                                .execute(&connection)
+                                .expect("Error saving new joinsound");
+                            return Ok(());
+                        },
+                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
+                    }
+                }
+                else
+                {
+                    match youtube::download_video(&url, user_id, None)
+                    {
+                        Ok(file_path) =>
+                        {
+                            let connection = connect();
+                            let new_sound = NewJoinSound {
+                                discord_id: &user_id.to_string(),
+                                guild_id: None,
+                                file_path: &file_path.to_string(),
+                                video_url: &url.clone(),
+                            };
+                            diesel::update(schema::joinsounds::table)
+                                .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+                                .filter(schema::joinsounds::guild_id.is_null())
+                                .set(new_sound)
+                                .execute(&connection)
+                                .expect("Error saving new joinsound");
+                            return Ok(());
+                        },
+                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
+                    }
+                }
+            }
+        },
+        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
+    }
+}
+
 pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
 {
     Ok(())
