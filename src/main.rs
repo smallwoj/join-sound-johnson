@@ -11,6 +11,29 @@ mod youtube;
 
 const TOASTLORD_ID: serenity::UserId = serenity::UserId(90237200909729792);
 
+
+async fn event_listener(
+    _ctx: &serenity::Context,
+    event: &poise::Event<'_>,
+    _framework: &poise::Framework<Data, Error>,
+    _user_data: &Data,
+) -> Result<(), Error> {
+    match event {
+        poise::Event::Ready { data_about_bot } => {
+            println!("{} is connected!", data_about_bot.user.name)
+        }
+        poise::Event::VoiceStateUpdate {
+            old,
+            new,
+        } => {
+            println!("voice state update: {:?} -> {:?}", old, new);
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
 // Pong up
 #[poise::command(prefix_command, slash_command, track_edits)]
 pub async fn ping(
@@ -186,19 +209,17 @@ async fn remove(
 
     Ok(())
 }
+
 #[tokio::main]
 async fn main()
 {
     dotenv::dotenv().ok();
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
-    let _application_id = std::env::var("APPLICATION_ID").expect("Expected an application id in the environment");
 
     poise::Framework::build()
         .token(token)
         .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { 
-            println!("Bot has connected to discord!");
-            println!("{}", database::has_sound(TOASTLORD_ID, None));
 
             Ok(())
         }))
@@ -214,6 +235,9 @@ async fn main()
                 view(),
                 remove(),
             ],
+            listener: |ctx, event, framework, user_data| {
+                Box::pin(event_listener(ctx, event, framework, user_data))
+            },
             ..Default::default()
         })
         .run().await.unwrap();
