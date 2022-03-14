@@ -50,19 +50,17 @@ async fn set(
     {
         println!("Error sending message: {}", why);
     }
-    if let Err(why) = match youtube::get_video_length(&url)
+    let guild_id = match ctx.guild()
     {
-        Ok(length) => {
-            let guild = if local 
-            {
-                ctx.guild_id()
-            }
-            else
-            {
-                None
-            };
-            println!("{:?}", youtube::download_video(&url, ctx.author().id, guild));
-            ctx.say(format!("Length: {:?}", length)).await
+        Some(guild) => Some(guild.id),
+        None => None,
+    };
+
+    if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
+    {
+        Ok(_) => {
+            
+            ctx.say(format!("Successful!")).await
         },
         Err(why) => {
             ctx.say(format!("Error: {}", why)).await

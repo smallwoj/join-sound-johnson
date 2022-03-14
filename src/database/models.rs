@@ -20,7 +20,7 @@ pub struct JoinSounds
 pub struct NewJoinSound<'a>
 {
     pub discord_id: &'a str,
-    guild_id: &'a str,
-    file_path: &'a str,
-    video_url: &'a str,
+    pub guild_id: Option<&'a str>,
+    pub file_path: &'a str,
+    pub video_url: &'a str,
 }

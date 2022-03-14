@@ -140,5 +140,12 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
         }
     }
 
-    Ok(format!("{:?}", fs::canonicalize(folder)))
+    if let Ok(file_path) = file.canonicalize()
+    {
+        return Ok(file_path.to_str().unwrap().to_string());
+    }
+    else
+    {
+        return Err(String::from("Could not find file"));
+    }
 }
