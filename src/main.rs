@@ -12,7 +12,7 @@ mod event_listener;
 
 const TOASTLORD_ID: poise::serenity_prelude::UserId = poise::serenity_prelude::UserId(90237200909729792);
 
-// Pong up
+/// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
 pub async fn ping(
     ctx: Context<'_>,
@@ -20,6 +20,28 @@ pub async fn ping(
 {
     ctx.say("Pong!").await?;
 
+    Ok(())
+}
+
+/// Show this help menu.
+#[poise::command(prefix_command, track_edits, slash_command)]
+async fn help(
+    ctx: Context<'_>,
+    #[description = "Specific command to show help about"]
+    #[autocomplete = "poise::builtins::autocomplete_command"]
+    command: Option<String>,
+) -> Result<(), Error> {
+    poise::builtins::help(
+        ctx,
+        command.as_deref(),
+        poise::builtins::HelpConfiguration {
+            extra_text_at_bottom: "\
+Set a sound to play everytime you join a voice channel!",
+            show_context_menu_commands: false,
+            ..Default::default()
+        },
+    )
+    .await?;
     Ok(())
 }
 
@@ -37,7 +59,7 @@ async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
     Ok(())
 }
 
-/// Set a join sound
+/// Set a join sound.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set(
     ctx: Context<'_>,
@@ -102,7 +124,7 @@ async fn set(
     Ok(())
 }
 
-/// View what your joinsound currently is
+/// View what your joinsound currently is.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn view(
     ctx: Context<'_>,
@@ -145,7 +167,7 @@ async fn view(
     Ok(())
 }
 
-/// Remove a joinsound
+/// Remove a joinsound.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn remove(
     ctx: Context<'_>,
@@ -207,6 +229,7 @@ async fn main()
                 ..Default::default()
             },
             commands: vec![
+                help(),
                 ping(),
                 register(),
                 set(),
