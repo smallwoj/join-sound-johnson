@@ -101,6 +101,49 @@ async fn set(
     Ok(())
 }
 
+/// View what your joinsound currently is
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn view(
+    ctx: Context<'_>,
+    #[description = "If true, the joinsound local to this server will be shown."] #[flag] local: bool
+) -> Result<(), Error>
+{
+    if let Err(why) = ctx.say("Fetching...").await
+    {
+        println!("Error sending message: {}", why);
+    }
+    let guild_id = match ctx.guild()
+    {
+        Some(guild) => {
+            if local
+            {
+                Some(guild.id)
+            }
+            else
+            {
+                None
+            }
+        },
+        None => None,
+    };
+
+    if let Err(why) = match database::get_sound_url(ctx.author().id, guild_id)
+    {
+        Ok(url) => {
+            
+            ctx.say(format!("Your joinsound url is {}", url)).await
+        },
+        Err(why) => {
+            ctx.say(format!("Error: {}", why)).await
+        },
+    }
+    {
+        println!("Error sending message: {}", why);
+    }
+
+    Ok(())
+}
+
 /// Remove a joinsound
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn remove(
@@ -168,6 +211,7 @@ async fn main()
                 ping(),
                 register(),
                 set(),
+                view(),
                 remove(),
             ],
             ..Default::default()

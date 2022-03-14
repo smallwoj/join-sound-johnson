@@ -57,14 +57,13 @@ pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::
 
 pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<PathBuf, String>
 {
-    use self::schema::joinsounds::dsl::{joinsounds, discord_id, guild_id, file_path};
     let connection = connect();
 
     // Check local sound first
-    if let Ok(path) = joinsounds
-        .filter(discord_id.eq(user_id.to_string()))
-        .filter(guild_id.eq(guild.to_string()))
-        .select(file_path)
+    if let Ok(path) = schema::joinsounds::table
+        .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+        .filter(schema::joinsounds::guild_id.eq(guild.to_string()))
+        .select(schema::joinsounds::file_path)
         .first::<Option<String>>(&connection)
     {
         if let Some(joinsound_path) = path
@@ -79,9 +78,9 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
     else
     {
         // Check global sound
-        if let Ok(path) = joinsounds
-            .filter(discord_id.eq(user_id.to_string()))
-            .select(file_path)
+        if let Ok(path) = schema::joinsounds::table
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .select(schema::joinsounds::file_path)
             .first::<Option<String>>(&connection)
         {
             if let Some(joinsound_path) = path
@@ -96,6 +95,57 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
         else
         {
             return Err("No joinsound entry".to_string());
+        }
+    }
+}
+
+pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<String, String>
+{
+    let connection = connect();
+
+    if let Some(guild_id) = guild
+    {
+        // Check local sound first
+        if let Ok(video_url) = schema::joinsounds::table
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
+            .select(schema::joinsounds::video_url)
+            .first::<Option<String>>(&connection)
+        {
+            if let Some(url) = video_url
+            {
+                return Ok(String::from(url));
+            }
+            else
+            {
+                return Err("url is null".to_string());
+            }
+        }
+        else
+        {
+            return Err("You do not have a joinsound for this server".to_string());
+        }
+    }
+    else
+    {
+        // Check global sound
+        if let Ok(video_url) = schema::joinsounds::table
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .select(schema::joinsounds::video_url)
+            .first::<Option<String>>(&connection)
+        {
+            if let Some(url) = video_url
+            {
+                return Ok(String::from(url));
+            }
+            else
+            {
+                return Err("url is null".to_string());
+            }
+        }
+        else
+        {
+            return Err("You do not have a global joinsound.".to_string());
         }
     }
 }
