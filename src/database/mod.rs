@@ -19,7 +19,6 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub fn connect() -> MysqlConnection
 {
-    println!("Connecting to database.");
     let database_url = env::var("DATABASE_URL").expect("Missing environment variable DATABASE_URL");
     MysqlConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
