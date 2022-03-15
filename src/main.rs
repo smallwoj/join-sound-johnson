@@ -212,6 +212,55 @@ async fn remove(
     Ok(())
 }
 
+/// Force the bot to leave a voice channel.
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn leave(
+    ctx: Context<'_>,
+) -> Result<(), Error>
+{
+    if let Err(why) = ctx.say("🔃 Leaving...").await
+    {
+        println!("Error sending message: {}", why);
+    }
+    if let Some(guild_id) = ctx.guild_id()
+    {
+        let manager = songbird::get(&ctx.discord()).await
+            .expect("Songbird Voice client placed in at initialisation.").clone();
+        let has_handler = manager.get(guild_id).is_some();
+        if has_handler
+        {
+            if let Err(why) = manager.remove(guild_id).await
+            {
+                println!("Error removing voice client: {}", why);
+                if let Err(why) = ctx.say(format!("❌ Error: {}", why)).await
+                {
+                    println!("Error sending message: {}", why);
+                }
+            }
+            else
+            {
+                if let Err(why) = ctx.say("✅ Successful!").await
+                {
+                    println!("Error sending message: {}", why);
+                }
+            }
+        }
+        else
+        {
+            if let Err(why) = ctx.say("❌ Not in a voice channel.").await
+            {
+                println!("Error sending message: {}", why);
+            }
+        }
+    }
+    else
+    {
+        ctx.say("❌ Error: I am not in a voice channel.").await?;
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main()
 {
@@ -239,6 +288,7 @@ async fn main()
                 set(),
                 view(),
                 remove(),
+                leave(),
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
