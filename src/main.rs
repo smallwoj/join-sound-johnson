@@ -69,7 +69,7 @@ async fn set(
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
-    if let Err(why) = ctx.say("Downloading...").await
+    if let Err(why) = ctx.say("🔃 Downloading...").await
     {
         println!("Error sending message: {}", why);
     }
@@ -94,10 +94,10 @@ async fn set(
         {
             Ok(_) => {
                 
-                ctx.say(format!("Successful!")).await
+                ctx.say(format!("✅ Successful!")).await
             },
             Err(why) => {
-                ctx.say(format!("Error: {}", why)).await
+                ctx.say(format!("❌ Error: {}", why)).await
             },
         }
         {
@@ -110,10 +110,10 @@ async fn set(
         {
             Ok(_) => {
                 
-                ctx.say(format!("Successful!")).await
+                ctx.say(format!("✅ Successful!")).await
             },
             Err(why) => {
-                ctx.say(format!("Error: {}", why)).await
+                ctx.say(format!("❌ Error: {}", why)).await
             },
         }
         {
@@ -131,7 +131,7 @@ async fn view(
     #[description = "If true, the joinsound local to this server will be shown."] #[flag] local: bool
 ) -> Result<(), Error>
 {
-    if let Err(why) = ctx.say("Fetching...").await
+    if let Err(why) = ctx.say("🔃 Fetching...").await
     {
         println!("Error sending message: {}", why);
     }
@@ -154,10 +154,10 @@ async fn view(
     {
         Ok(url) => {
             
-            ctx.say(format!("Your joinsound url is {}", url)).await
+            ctx.say(format!("✅ Your joinsound url is {}", url)).await
         },
         Err(why) => {
-            ctx.say(format!("Error: {}", why)).await
+            ctx.say(format!("❌ Error: {}", why)).await
         },
     }
     {
@@ -174,7 +174,7 @@ async fn remove(
     #[description = "If true, the joinsound local to this server will be removed."] #[flag] local: bool
 ) -> Result<(), Error>
 {
-    if let Err(why) = ctx.say("Removing...").await
+    if let Err(why) = ctx.say("🔃 Removing...").await
     {
         println!("Error sending message: {}", why);
     }
@@ -197,10 +197,10 @@ async fn remove(
     {
         Ok(_) => {
             
-            ctx.say(format!("Successful!")).await
+            ctx.say(format!("✅ Successful!")).await
         },
         Err(why) => {
-            ctx.say(format!("Error: {}", why)).await
+            ctx.say(format!("❌ Error: {}", why)).await
         },
     }
     {
