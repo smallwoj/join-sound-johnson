@@ -1,6 +1,8 @@
 #[macro_use] extern crate diesel;
 
 use songbird::SerenityInit;
+use serenity::model::gateway::Activity;
+use serenity::model::user::OnlineStatus;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -219,7 +221,9 @@ async fn main()
 
     poise::Framework::build()
         .token(token)
-        .user_data_setup(move |_ctx, _ready, _framework| Box::pin(async move { 
+        .user_data_setup(move |ctx, _ready, _framework| Box::pin(async move { 
+            let activity = Activity::watching("j!help");
+            ctx.set_presence(Some(activity), OnlineStatus::Online).await;
 
             Ok(())
         }))

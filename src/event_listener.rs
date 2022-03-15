@@ -22,7 +22,7 @@ pub async fn event_listener(
 ) -> Result<(), Error> {
     match event {
         poise::Event::Ready { data_about_bot } => {
-            println!("{} is connected!", data_about_bot.user.name)
+            println!("{} is connected!", data_about_bot.user.name);
         }
         poise::Event::VoiceStateUpdate {
             old,
