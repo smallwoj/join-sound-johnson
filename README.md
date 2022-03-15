@@ -21,4 +21,5 @@ To add this bot to your server, [click this link](https://discord.com/api/oauth2
   /set         Set a join sound.
   /view        View what your joinsound currently is.
   /remove      Remove a joinsound.
+  /leave       Force the bot to leave a voice channel.
 ```
