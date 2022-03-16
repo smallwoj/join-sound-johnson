@@ -11,7 +11,7 @@ Specifically, this is a rewrite of [my old discord.py bot](https://github.com/sm
 
 <h1 align="center">Add This Bot</h1>
 
-To add this bot to your server, [click this link](https://discord.com/api/oauth2/authorize?client_id=953092836608319549&permissions=2184202240&scope=applications.commands%20bot)!
+To add this bot to your server, [check out the top.gg page](https://top.gg/bot/953092836608319549)!
 
 <h1 align="center">Commands</h1>
 
