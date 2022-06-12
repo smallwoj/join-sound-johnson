@@ -61,13 +61,7 @@ async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
     Ok(())
 }
 
-/// Set a join sound.
-#[poise::command(prefix_command, slash_command, track_edits)]
-async fn set(
-    ctx: Context<'_>,
-    #[description = "Joinsound URL."] url: String,
-    #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
-) -> Result<(), Error>
+async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Error>
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
@@ -124,6 +118,27 @@ async fn set(
     }
 
     Ok(())
+}
+
+/// Set a join sound.
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn set(
+    ctx: Context<'_>,
+    #[description = "Joinsound URL."] url: String,
+    #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
+) -> Result<(), Error>
+{
+    set_sound(ctx, url, local).await
+}
+
+/// Set a sound that is local to this discord server.
+#[poise::command(prefix_command, slash_command, track_edits)]
+async fn set_local(
+    ctx: Context<'_>, 
+    #[description = "Joinsound URL."] url: String
+) -> Result<(), Error>
+{
+    set_sound(ctx, url, true).await
 }
 
 /// View what your joinsound currently is.
@@ -286,6 +301,7 @@ async fn main()
                 ping(),
                 register(),
                 set(),
+                set_local(),
                 view(),
                 remove(),
                 leave(),
