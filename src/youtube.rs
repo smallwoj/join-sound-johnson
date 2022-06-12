@@ -5,8 +5,18 @@ use chrono::Duration;
 
 use poise::serenity_prelude as serenity;
 
+fn shorts_to_real_url(url: String) -> String {
+    let split_url: Vec<&str> = url.split("/").collect();
+    let vid_id = split_url.last().unwrap();
+    return format!("https://www.youtube.com/watch?v={}", vid_id);
+}
+
 pub fn get_video_length(url: &String) -> Result<Duration, String>
 {
+    let mut url = url.clone();
+    if url.contains("shorts") {
+        url = shorts_to_real_url(url);
+    }
     let output = Command::new("youtube-dl")
         .arg("--get-duration")
         .arg(url)
@@ -92,6 +102,10 @@ pub fn get_video_length(url: &String) -> Result<Duration, String>
 
 pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<String, String>
 {
+    let mut url = url.clone();
+    if url.contains("shorts") {
+        url = shorts_to_real_url(url);
+    }
     // Build the destination folder
     let folder = if let Some(guild) = guild_id
     {
