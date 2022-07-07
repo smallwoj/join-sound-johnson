@@ -67,6 +67,11 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
     {
         if let Some(joinsound_path) = path
         {
+            if let Err(why) = set_last_played(user_id, Some(guild)) 
+            {
+                println!("Error setting last played: {}", why);
+            }
+
             return Ok(Path::new(&joinsound_path).to_path_buf());
         }
         else
@@ -84,6 +89,11 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
         {
             if let Some(joinsound_path) = path
             {
+                if let Err(why) = set_last_played(user_id, None)
+                {
+                    println!("Error setting last played: {}", why);
+                }
+
                 return Ok(Path::new(&joinsound_path).to_path_buf());
             }
             else
@@ -145,6 +155,57 @@ pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>
         else
         {
             return Err("You do not have a global joinsound.".to_string());
+        }
+    }
+}
+
+pub fn get_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Option<chrono::NaiveDateTime>
+{
+    let connection = connect();
+
+    if let Some(guild_id) = guild
+    {
+        // Check local sound first
+        if let Ok(last_played) = schema::joinsounds::table
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
+            .select(schema::joinsounds::last_played)
+            .first::<Option<chrono::NaiveDateTime>>(&connection)
+        {
+            if let Some(last_played) = last_played
+            {
+                return Some(last_played);
+            }
+            else
+            {
+                return None;
+            }
+        }
+        else
+        {
+            return None;
+        }
+    }
+    else
+    {
+        // Check global sound
+        if let Ok(last_played) = schema::joinsounds::table
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .select(schema::joinsounds::last_played)
+            .first::<Option<chrono::NaiveDateTime>>(&connection)
+        {
+            if let Some(last_played) = last_played
+            {
+                return Some(last_played);
+            }
+            else
+            {
+                return None;
+            }
+        }
+        else
+        {
+            return None;
         }
     }
 }
@@ -281,6 +342,32 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
         },
         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
     }
+}
+
+pub fn set_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<(), Error>
+{
+    let connection = connect();
+    let timestamp = chrono::Utc::now().naive_utc();
+    if let Some(guild_id) = guild 
+    {
+        diesel::update(schema::joinsounds::table)
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
+            .set(schema::joinsounds::last_played.eq(timestamp))
+            .execute(&connection)
+            .expect("Error setting last played");
+    }
+    else 
+    {
+        diesel::update(schema::joinsounds::table)
+            .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
+            .filter(schema::joinsounds::guild_id.is_null())
+            .set(schema::joinsounds::last_played.eq(timestamp))
+            .execute(&connection)
+            .expect("Error setting last played");
+    }
+    println!("Set last played to {}", timestamp);
+    return Ok(());
 }
 
 pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::GuildId>) -> Result<(), Error>

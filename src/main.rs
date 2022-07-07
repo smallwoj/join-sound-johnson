@@ -89,7 +89,6 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
         if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
         {
             Ok(_) => {
-                
                 ctx.say(format!("✅ Successful!")).await
             },
             Err(why) => {
