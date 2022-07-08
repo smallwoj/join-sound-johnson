@@ -33,8 +33,47 @@ pub async fn event_listener(
                 println!("{:?} joined voice channel in {:?}", new.user_id, new.guild_id);
                 if let Some(guild_id) = new.guild_id 
                 {
-                    if database::has_sound(new.user_id, None) || database::has_sound(new.user_id, Some(guild_id))
+                    let has_local_sound = database::has_sound(new.user_id, Some(guild_id));
+                    let has_global_sound = database::has_sound(new.user_id, None);
+                    if has_local_sound || has_global_sound
                     {
+                        let last_played_local_option = database::get_last_played(new.user_id, Some(guild_id));
+                        let last_played_global_option = database::get_last_played(new.user_id, None);
+                        let last_played = if last_played_local_option.is_some() && last_played_global_option.is_some()
+                        {
+                            let last_played_global = last_played_global_option.unwrap();
+                            let last_played_local = last_played_local_option.unwrap();
+                            if last_played_local > last_played_global
+                            {
+                                Some(last_played_local)
+                            }
+                            else
+                            {
+                                Some(last_played_global)
+                            }
+                        }
+                        else if let Some(last_played_local) = last_played_local_option
+                        {
+                            Some(last_played_local)
+                        }
+                        else if let Some(last_played_global) = last_played_global_option
+                        {
+                            Some(last_played_global)
+                        }
+                        else
+                        {
+                            None
+                        };
+
+                        if let Some(last_played) = last_played
+                        {
+                            if chrono::Utc::now().naive_utc().timestamp() - last_played.timestamp() < 30
+                            {
+                                println!("Too soon to play sound.");
+                                return Ok(());
+                            }
+                        }
+
                         let manager = songbird::get(&ctx).await
                             .expect("Songbird Voice client placed in at initialisation.").clone();
 
