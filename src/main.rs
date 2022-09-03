@@ -275,6 +275,22 @@ async fn leave(
     Ok(())
 }
 
+/// Gives a link to the support server.
+#[poise::command(slash_command, track_edits)]
+async fn support(
+    ctx: Context<'_>,
+) -> Result<(), Error>
+{
+    ctx.send(|f| f
+        .embed(|f| f
+            .title("Join Sound Johnson Support Server")
+            .description("You can join the support server at https://discord.gg/KZA8TFMwPN.")
+        )
+        .ephemeral(true) // this one only applies in application commands though
+    ).await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main()
 {
@@ -304,6 +320,7 @@ async fn main()
                 view(),
                 remove(),
                 leave(),
+                support(),
             ],
             listener: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
