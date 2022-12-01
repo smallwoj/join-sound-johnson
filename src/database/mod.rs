@@ -27,7 +27,7 @@ pub fn connect() -> MysqlConnection
 pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::GuildId>) -> bool
 {
     use self::schema::joinsounds::dsl::{joinsounds, discord_id, guild_id};
-    let connection = connect();
+    let connection = &mut connect();
     // Check local sound
     if let Some(guild) = in_guild_id
     {
@@ -35,7 +35,7 @@ pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::
                 .filter(discord_id.eq(in_discord_id.to_string()))
                 .filter(guild_id.eq(guild.to_string()))
             ))
-            .get_result::<bool>(&connection);
+            .get_result::<bool>(connection);
             match res
             {
                 Ok(x) => return x,
@@ -48,7 +48,7 @@ pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::
                 .filter(discord_id.eq(in_discord_id.to_string()))
                 .filter(guild_id.is_null())
             ))
-            .get_result::<bool>(&connection);
+            .get_result::<bool>(connection);
         match res
         {
             Ok(x) => return x,
@@ -60,9 +60,9 @@ pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::
 pub fn has_any_sound(in_discord_id: serenity::UserId) -> bool
 {
     use self::schema::joinsounds::dsl::{joinsounds, discord_id};
-    let connection = connect();
+    let connection = &mut connect();
     let res = select(exists(joinsounds.filter(discord_id.eq(in_discord_id.to_string()))))
-        .get_result::<bool>(&connection);
+        .get_result::<bool>(connection);
     match res
     {
         Ok(x) => return x,
@@ -72,14 +72,14 @@ pub fn has_any_sound(in_discord_id: serenity::UserId) -> bool
 
 pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<PathBuf, String>
 {
-    let connection = connect();
+    let connection = &mut connect();
 
     // Check local sound first
     if let Ok(path) = schema::joinsounds::table
         .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
         .filter(schema::joinsounds::guild_id.eq(guild.to_string()))
         .select(schema::joinsounds::file_path)
-        .first::<Option<String>>(&connection)
+        .first::<Option<String>>(connection)
     {
         if let Some(joinsound_path) = path
         {
@@ -102,7 +102,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::file_path)
-            .first::<Option<String>>(&connection)
+            .first::<Option<String>>(connection)
         {
             if let Some(joinsound_path) = path
             {
@@ -127,7 +127,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
 
 pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<String, String>
 {
-    let connection = connect();
+    let connection = &mut connect();
 
     if let Some(guild_id) = guild
     {
@@ -136,7 +136,7 @@ pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::video_url)
-            .first::<Option<String>>(&connection)
+            .first::<Option<String>>(connection)
         {
             if let Some(url) = video_url
             {
@@ -159,7 +159,7 @@ pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::video_url)
-            .first::<Option<String>>(&connection)
+            .first::<Option<String>>(connection)
         {
             if let Some(url) = video_url
             {
@@ -179,7 +179,7 @@ pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>
 
 pub fn get_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Option<chrono::NaiveDateTime>
 {
-    let connection = connect();
+    let connection = &mut connect();
 
     if let Some(guild_id) = guild
     {
@@ -188,7 +188,7 @@ pub fn get_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildI
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(&connection)
+            .first::<Option<chrono::NaiveDateTime>>(connection)
         {
             if let Some(last_played) = last_played
             {
@@ -211,7 +211,7 @@ pub fn get_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildI
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(&connection)
+            .first::<Option<chrono::NaiveDateTime>>(connection)
         {
             if let Some(last_played) = last_played
             {
@@ -248,7 +248,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = connect();
+                            let connection = &mut connect();
                             let guild_str = guild.to_string();
                             let guild_option = Some(guild_str.as_str());
                             let new_sound = NewJoinSound {
@@ -259,7 +259,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                             };
                             diesel::insert_into(schema::joinsounds::table)
                                 .values(&new_sound)
-                                .execute(&connection)
+                                .execute(connection)
                                 .expect("Error saving new joinsound");
                             return Ok(());
                         },
@@ -272,7 +272,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = connect();
+                            let connection = &mut connect();
                             let new_sound = NewJoinSound {
                                 discord_id: &user_id.to_string(),
                                 guild_id: None,
@@ -281,7 +281,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                             };
                             diesel::insert_into(schema::joinsounds::table)
                                 .values(&new_sound)
-                                .execute(&connection)
+                                .execute(connection)
                                 .expect("Error saving new joinsound");
                             return Ok(());
                         },
@@ -313,7 +313,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = connect();
+                            let connection = &mut connect();
                             let guild_str = guild.to_string();
                             let guild_option = Some(guild_str.as_str());
                             let new_sound = NewJoinSound {
@@ -326,7 +326,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                                 .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
                                 .filter(schema::joinsounds::guild_id.eq(&guild_str))
                                 .set(new_sound)
-                                .execute(&connection)
+                                .execute(connection)
                                 .expect("Error saving new joinsound");
                             return Ok(());
                         },
@@ -339,7 +339,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = connect();
+                            let connection = &mut connect();
                             let new_sound = NewJoinSound {
                                 discord_id: &user_id.to_string(),
                                 guild_id: None,
@@ -350,7 +350,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                                 .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
                                 .filter(schema::joinsounds::guild_id.is_null())
                                 .set(new_sound)
-                                .execute(&connection)
+                                .execute(connection)
                                 .expect("Error saving new joinsound");
                             return Ok(());
                         },
@@ -365,7 +365,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
 
 pub fn set_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<(), Error>
 {
-    let connection = connect();
+    let connection = &mut connect();
     let timestamp = chrono::Utc::now().naive_utc();
     if let Some(guild_id) = guild 
     {
@@ -373,7 +373,7 @@ pub fn set_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildI
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .set(schema::joinsounds::last_played.eq(timestamp))
-            .execute(&connection)
+            .execute(connection)
             .expect("Error setting last played");
     }
     else 
@@ -382,7 +382,7 @@ pub fn set_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildI
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .set(schema::joinsounds::last_played.eq(timestamp))
-            .execute(&connection)
+            .execute(connection)
             .expect("Error setting last played");
     }
     println!("Set last played to {}", timestamp);
@@ -395,7 +395,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
     {
         if let Some(guild) = guild_id
         {
-            let connection = connect();
+            let connection = &mut connect();
             let guild_str = guild.to_string();
             let will_remove_folder;
             let joinsound_path_string;
@@ -406,7 +406,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
                 .filter(schema::joinsounds::guild_id.eq(&guild_str))
                 .select(schema::joinsounds::file_path)
-                .first::<Option<String>>(&connection)
+                .first::<Option<String>>(connection)
             {
                 if let Some(joinsound_path) = path
                 {
@@ -428,7 +428,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
             diesel::delete(schema::joinsounds::table)
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
                 .filter(schema::joinsounds::guild_id.eq(&guild_str))
-                .execute(&connection)
+                .execute(connection)
                 .expect("Error deleting joinsound");
                 
             if will_remove_folder {
@@ -446,7 +446,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
         }
         else
         {
-            let connection = connect();
+            let connection = &mut connect();
             let will_remove_folder;
             let joinsound_path_string;
             // get file path to remove it
@@ -454,7 +454,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
                 .filter(schema::joinsounds::guild_id.is_null())
                 .select(schema::joinsounds::file_path)
-                .first::<Option<String>>(&connection)
+                .first::<Option<String>>(connection)
             {
                 if let Some(joinsound_path) = path
                 {
@@ -476,7 +476,7 @@ pub fn remove_sound(discord_id: serenity::UserId, guild_id: Option<serenity::Gui
             diesel::delete(schema::joinsounds::table)
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
                 .filter(schema::joinsounds::guild_id.is_null())
-                .execute(&connection)
+                .execute(connection)
                 .expect("Error deleting joinsound");
             
             if will_remove_folder {

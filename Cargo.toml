@@ -6,23 +6,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-diesel = { version = "1.4.8", features = ["mysql", "chrono"] }
+diesel = { version = "2.0.2", features = ["mysql", "chrono"] }
 chrono = "0.4"
 dotenv = "0.15.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+poise = { version = "0.5.0", features = ["collector"]}
+songbird = "0.3.0"
 [dependencies.serenity]
-git = "https://github.com/serenity-rs/serenity"
-# the `next` branch because `poise` depends on it 
-branch = "next"
 default-features = false
-features = ["voice", "client", "gateway", "rustls_backend", "model", "unstable_discord_api", "cache"]
-
-[dependencies.songbird]
-git = "https://github.com/serenity-rs/songbird"
-# the `next` branch so that `songbird` also pulls `serenity` from its github repository's `next` branch
-branch = "next"
-
-[dependencies.poise]
-git = "https://github.com/kangalioo/poise"
-features = ["collector"]
-branch = "develop"
+features = ["voice", "client", "gateway", "model", "cache"]
+version = "0.11"
