@@ -1,7 +1,7 @@
 #[macro_use] extern crate diesel;
 
 use songbird::SerenityInit;
-use serenity::model::gateway::Activity;
+use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
 
 type Data = ();
@@ -65,55 +65,64 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
 {
     println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
 
-    if let Err(why) = ctx.say("🔃 Downloading...").await
-    {
-        println!("Error sending message: {}", why);
-    }
-    let guild_id = match ctx.guild()
-    {
-        Some(guild) => {
-            if local
+    match ctx.say("🔃 Downloading...").await {
+        Ok(message) => {
+            let guild_id = match ctx.guild()
             {
-                Some(guild.id)
+                Some(guild) => {
+                    if local
+                    {
+                        Some(guild.id)
+                    }
+                    else
+                    {
+                        None
+                    }
+                },
+                None => None,
+            };
+        
+            if database::has_sound(ctx.author().id, guild_id)
+            {
+                if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
+                {
+                    Ok(_) => {
+                        message.edit(ctx, |f| f
+                            .content(format!("✅ Successful!"))
+                        ).await
+                    },
+                    Err(why) => {
+                        message.edit(ctx, |f| f
+                            .content(format!("❌ Error: {}", why))
+                        ).await
+                    },
+                }
+                {
+                    println!("Error sending message: {}", why);
+                }
             }
             else
             {
-                None
+                if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
+                {
+                    Ok(_) => {
+                        
+                        message.edit(ctx, |f| f
+                            .content(format!("✅ Successful!"))
+                        ).await
+                    },
+                    Err(why) => {
+                        message.edit(ctx, |f| f
+                            .content(format!("❌ Error: {}", why))
+                        ).await
+                    },
+                }
+                {
+                    println!("Error sending message: {}", why);
+                }
             }
         },
-        None => None,
-    };
-
-    if database::has_sound(ctx.author().id, guild_id)
-    {
-        if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
-        {
-            Ok(_) => {
-                ctx.say(format!("✅ Successful!")).await
-            },
-            Err(why) => {
-                ctx.say(format!("❌ Error: {}", why)).await
-            },
-        }
-        {
-            println!("Error sending message: {}", why);
-        }
-    }
-    else
-    {
-        if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
-        {
-            Ok(_) => {
-                
-                ctx.say(format!("✅ Successful!")).await
-            },
-            Err(why) => {
-                ctx.say(format!("❌ Error: {}", why)).await
-            },
-        }
-        {
-            println!("Error sending message: {}", why);
-        }
+        Err(why) => println!("Error sending message: {}", why)
     }
 
     Ok(())
@@ -147,39 +156,43 @@ async fn view(
     #[description = "If true, the joinsound local to this server will be shown."] #[flag] local: bool
 ) -> Result<(), Error>
 {
-    if let Err(why) = ctx.say("🔃 Fetching...").await
-    {
-        println!("Error sending message: {}", why);
-    }
-    let guild_id = match ctx.guild()
-    {
-        Some(guild) => {
-            if local
+    match ctx.say("🔃 Fetching...").await {
+        Ok(message) => {
+            let guild_id = match ctx.guild()
             {
-                Some(guild.id)
-            }
-            else
+                Some(guild) => {
+                    if local
+                    {
+                        Some(guild.id)
+                    }
+                    else
+                    {
+                        None
+                    }
+                },
+                None => None,
+            };
+        
+            if let Err(why) = match database::get_sound_url(ctx.author().id, guild_id)
             {
-                None
+                Ok(url) => {
+                    message.edit(ctx, |f| f
+                        .content(format!("✅ Your joinsound url is {}", url))
+                    ).await
+                },
+                Err(why) => {
+                    message.edit(ctx, |f| f
+                        .content(format!("❌ Error: {}", why))
+                    ).await
+                },
             }
-        },
-        None => None,
-    };
+            {
+                println!("Error sending message: {}", why);
+            }
 
-    if let Err(why) = match database::get_sound_url(ctx.author().id, guild_id)
-    {
-        Ok(url) => {
-            
-            ctx.say(format!("✅ Your joinsound url is {}", url)).await
-        },
-        Err(why) => {
-            ctx.say(format!("❌ Error: {}", why)).await
-        },
-    }
-    {
-        println!("Error sending message: {}", why);
-    }
-
+        },    
+        Err(why) => println!("Error sending message: {}", why)
+    }    
     Ok(())
 }
 
@@ -190,38 +203,43 @@ async fn remove(
     #[description = "If true, the joinsound local to this server will be removed."] #[flag] local: bool
 ) -> Result<(), Error>
 {
-    if let Err(why) = ctx.say("🔃 Removing...").await
-    {
-        println!("Error sending message: {}", why);
-    }
-    let guild_id = match ctx.guild()
-    {
-        Some(guild) => {
-            if local
+    match ctx.say("🔃 Removing...").await {
+        Ok(message) => {
+            let guild_id = match ctx.guild()
             {
-                Some(guild.id)
+                Some(guild) => {
+                    if local
+                    {
+                        Some(guild.id)
+                    }
+                    else
+                    {
+                        None
+                    }
+                },
+                None => None,
+            };
+
+            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id)
+            {
+                Ok(_) => {
+                    message.edit(ctx, |f| f
+                        .content(format!("✅ Successful!"))
+                    ).await
+                },
+                Err(why) => {
+                    message.edit(ctx, |f| f
+                        .content(format!("❌ Error: {}", why))
+                    ).await
+                },
             }
-            else
             {
-                None
+                println!("Error sending message: {}", why);
             }
         },
-        None => None,
+        Err(why) => println!("Error sending message: {}", why),
     };
 
-    if let Err(why) = match database::remove_sound(ctx.author().id, guild_id)
-    {
-        Ok(_) => {
-            
-            ctx.say(format!("✅ Successful!")).await
-        },
-        Err(why) => {
-            ctx.say(format!("❌ Error: {}", why)).await
-        },
-    }
-    {
-        println!("Error sending message: {}", why);
-    }
 
     Ok(())
 }
@@ -232,45 +250,56 @@ async fn leave(
     ctx: Context<'_>,
 ) -> Result<(), Error>
 {
-    if let Err(why) = ctx.say("🔃 Leaving...").await
-    {
-        println!("Error sending message: {}", why);
-    }
-    if let Some(guild_id) = ctx.guild_id()
-    {
-        let manager = songbird::get(&ctx.discord()).await
-            .expect("Songbird Voice client placed in at initialisation.").clone();
-        let has_handler = manager.get(guild_id).is_some();
-        if has_handler
-        {
-            if let Err(why) = manager.remove(guild_id).await
+    match ctx.say("🔃 Leaving...").await {
+        Ok(message) => {
+            if let Some(guild_id) = ctx.guild_id()
             {
-                println!("Error removing voice client: {}", why);
-                if let Err(why) = ctx.say(format!("❌ Error: {}", why)).await
+                let manager = songbird::get(&ctx.serenity_context()).await
+                    .expect("Songbird Voice client placed in at initialisation.").clone();
+                let has_handler = manager.get(guild_id).is_some();
+                if has_handler
                 {
-                    println!("Error sending message: {}", why);
+                    if let Err(why) = manager.remove(guild_id).await
+                    {
+                        println!("Error removing voice client: {}", why);
+                        if let Err(why) = message.edit(ctx, |f| f
+                            .content(format!("❌ Error: {}", why)
+                        )).await
+                        {
+                            println!("Error sending message: {}", why);
+                        }
+                    }
+                    else
+                    {
+                        if let Err(why) = message.edit(ctx, |f| f
+                            .content(format!("✅ Successful!")
+                        )).await
+                        {
+                            println!("Error sending message: {}", why);
+                        }
+                    }
+                }
+                else
+                {
+                    if let Err(why) = message.edit(ctx, |f| f
+                        .content(format!("❌ Not in a voice channel.")
+                    )).await
+
+                    {
+                        println!("Error sending message: {}", why);
+                    }
                 }
             }
             else
             {
-                if let Err(why) = ctx.say("✅ Successful!").await
-                {
-                    println!("Error sending message: {}", why);
-                }
+                message.edit(ctx, |f| f
+                    .content(format!("❌ Not in a voice channel.")
+                )).await?;
             }
-        }
-        else
-        {
-            if let Err(why) = ctx.say("❌ Not in a voice channel.").await
-            {
-                println!("Error sending message: {}", why);
-            }
-        }
-    }
-    else
-    {
-        ctx.say("❌ Error: I am not in a voice channel.").await?;
-    }
+
+        },
+        Err(why) => println!("Error sending message: {}", why)
+    };
 
     Ok(())
 }
@@ -298,14 +327,15 @@ async fn main()
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
 
-    poise::Framework::build()
+    poise::Framework::builder()
         .token(token)
-        .user_data_setup(move |ctx, _ready, _framework| Box::pin(async move { 
+        .setup(move |ctx, _ready, _framework| Box::pin(async move { 
             let activity = Activity::watching("j!help");
             ctx.set_presence(Some(activity), OnlineStatus::Online).await;
 
             Ok(())
         }))
+        .intents(GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
@@ -322,11 +352,12 @@ async fn main()
                 leave(),
                 support(),
             ],
-            listener: |ctx, event, framework, user_data| {
+            event_handler: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
             },
             ..Default::default()
         })
         .client_settings(|c| c.register_songbird())
+        .initialize_owners(true)
         .run().await.unwrap();
 }

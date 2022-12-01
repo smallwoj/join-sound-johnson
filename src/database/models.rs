@@ -16,7 +16,7 @@ pub struct JoinSounds
 }
 
 #[derive(Insertable, AsChangeset)]
-#[table_name="joinsounds"]
+#[diesel(table_name = joinsounds)]
 pub struct NewJoinSound<'a>
 {
     pub discord_id: &'a str,

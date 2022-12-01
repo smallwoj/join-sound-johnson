@@ -17,7 +17,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 pub async fn event_listener(
     ctx: &serenity::client::Context,
     event: &poise::Event<'_>,
-    _framework: &poise::Framework<Data, Error>,
+    _framework: poise::FrameworkContext<'_, (), Error>,
     _user_data: &Data,
 ) -> Result<(), Error> {
     match event {
