@@ -335,7 +335,7 @@ async fn main()
 
             Ok(())
         }))
-        .intents(GatewayIntents::GUILD_VOICE_STATES)
+        .intents(GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
