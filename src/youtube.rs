@@ -17,7 +17,7 @@ pub fn get_video_length(url: &String) -> Result<Duration, String>
     if url.contains("shorts") {
         url = shorts_to_real_url(url);
     }
-    let output = Command::new("youtube-dl")
+    let output = Command::new("yt-dlp")
         .arg("--get-duration")
         .arg(url)
         .stdout(Stdio::piped())
@@ -137,7 +137,7 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
         if let Ok(file_path) = file.canonicalize()
         {
             // Save the video to disk
-            let output = Command::new("youtube-dl")
+            let output = Command::new("yt-dlp")
                 .arg("--extract-audio")
                 .arg("--audio-format")
                 .arg("mp3")
