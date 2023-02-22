@@ -131,7 +131,7 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
         }
     }
 
-    let file = folder.join("joinsound.mp3");
+    let file = folder.join("joinsound.m4a");
     if let Ok(_) = fs::write(&file, "")
     {    
         if let Ok(file_path) = file.canonicalize()
@@ -140,7 +140,7 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
             let output = Command::new("yt-dlp")
                 .arg("--extract-audio")
                 .arg("--audio-format")
-                .arg("mp3")
+                .arg("m4a")
                 .arg("--no-continue")
                 .arg("-o")
                 .arg(file_path)
