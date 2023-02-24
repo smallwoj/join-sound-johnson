@@ -1,3 +1,5 @@
+#[macro_use] extern crate diesel;
+
 use chrono::Duration;
 use diesel::dsl::{
     select,
@@ -11,9 +13,9 @@ use poise::serenity_prelude as serenity;
 
 pub mod models;
 pub mod schema;
+pub mod youtube;
 
 use self::models::NewJoinSound;
-use super::youtube;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 

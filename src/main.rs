@@ -1,15 +1,12 @@
-#[macro_use] extern crate diesel;
-
 use songbird::SerenityInit;
 use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
+use jsj_backend as database;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-mod database;
-mod youtube;
 mod event_listener;
 
 const TOASTLORD_ID: poise::serenity_prelude::UserId = poise::serenity_prelude::UserId(90237200909729792);
