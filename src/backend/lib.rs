@@ -1,28 +1,26 @@
+#[macro_use] extern crate diesel;
+
 use chrono::Duration;
 use diesel::dsl::{
     select,
     exists,
 };
 use diesel::prelude::*;
-use std::{env, fs};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use poise::serenity_prelude as serenity;
 
 pub mod models;
 pub mod schema;
+pub mod youtube;
+pub mod database;
 
-use self::models::NewJoinSound;
-use super::youtube;
+use database::{
+    connect,
+};
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
-
-pub fn connect() -> MysqlConnection
-{
-    let database_url = env::var("DATABASE_URL").expect("Missing environment variable DATABASE_URL");
-    MysqlConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
-}
 
 pub fn has_sound(in_discord_id: serenity::UserId, in_guild_id: Option<serenity::GuildId>) -> bool
 {
@@ -248,19 +246,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = &mut connect();
-                            let guild_str = guild.to_string();
-                            let guild_option = Some(guild_str.as_str());
-                            let new_sound = NewJoinSound {
-                                discord_id: &user_id.to_string(),
-                                guild_id: guild_option,
-                                file_path: &file_path.to_string(),
-                                video_url: &url.clone(),
-                            };
-                            diesel::insert_into(schema::joinsounds::table)
-                                .values(&new_sound)
-                                .execute(connection)
-                                .expect("Error saving new joinsound");
+                            database::create_new_joinsound(user_id, Some(guild), file_path, url);
                             return Ok(());
                         },
                         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
@@ -272,17 +258,7 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = &mut connect();
-                            let new_sound = NewJoinSound {
-                                discord_id: &user_id.to_string(),
-                                guild_id: None,
-                                file_path: &file_path.to_string(),
-                                video_url: &url.clone(),
-                            };
-                            diesel::insert_into(schema::joinsounds::table)
-                                .values(&new_sound)
-                                .execute(connection)
-                                .expect("Error saving new joinsound");
+                            database::create_new_joinsound(user_id, None, file_path, url);
                             return Ok(());
                         },
                         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
@@ -313,21 +289,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = &mut connect();
-                            let guild_str = guild.to_string();
-                            let guild_option = Some(guild_str.as_str());
-                            let new_sound = NewJoinSound {
-                                discord_id: &user_id.to_string(),
-                                guild_id: guild_option,
-                                file_path: &file_path.to_string(),
-                                video_url: &url.clone(),
-                            };
-                            diesel::update(schema::joinsounds::table)
-                                .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
-                                .filter(schema::joinsounds::guild_id.eq(&guild_str))
-                                .set(new_sound)
-                                .execute(connection)
-                                .expect("Error saving new joinsound");
+                            database::update_joinsound(user_id, Some(guild), file_path, url);
                             return Ok(());
                         },
                         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
@@ -339,19 +301,7 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
                     {
                         Ok(file_path) =>
                         {
-                            let connection = &mut connect();
-                            let new_sound = NewJoinSound {
-                                discord_id: &user_id.to_string(),
-                                guild_id: None,
-                                file_path: &file_path.to_string(),
-                                video_url: &url.clone(),
-                            };
-                            diesel::update(schema::joinsounds::table)
-                                .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
-                                .filter(schema::joinsounds::guild_id.is_null())
-                                .set(new_sound)
-                                .execute(connection)
-                                .expect("Error saving new joinsound");
+                            database::update_joinsound(user_id, None, file_path, url);
                             return Ok(());
                         },
                         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
