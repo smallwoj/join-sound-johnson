@@ -19,7 +19,7 @@ version = "0.11"
 
 [lib]
 name = "jsj_backend"
-path = "src/database/lib.rs"
+path = "src/backend/lib.rs"
 
 [[bin]]
 name = "join-sound-johnson"
