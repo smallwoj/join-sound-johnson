@@ -141,7 +141,7 @@ pub fn download_video(url: &String, discord_id: serenity::UserId, guild_id: Opti
                 .arg("--extract-audio")
                 .arg("--audio-format")
                 .arg("m4a")
-                .arg("--no-continue")
+                .arg("--force-overwrites")
                 .arg("-o")
                 .arg(file_path)
                 .arg(url)
