@@ -18,7 +18,8 @@ pub fn get_video_length(url: &String) -> Result<Duration, String>
         url = shorts_to_real_url(url);
     }
     let output = Command::new("yt-dlp")
-        .arg("--get-duration")
+        .arg("--print")
+        .arg("duration_string")
         .arg(url)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -34,7 +35,7 @@ pub fn get_video_length(url: &String) -> Result<Duration, String>
     match String::from_utf8(output.stderr)
     {
         Ok(error) => {
-            if error.len() > 0 
+            if error.len() > 0 && str_length.len() == 0
             {
                 println!("{}", error);
                 return Err("Not a video".to_string());
