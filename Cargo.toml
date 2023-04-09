@@ -11,7 +11,7 @@ chrono = "0.4"
 dotenv = "0.15.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 poise = { version = "0.5.0", features = ["collector", "cache"]}
-songbird = "0.3.0"
+songbird = "0.3.2"
 [dependencies.serenity]
 default-features = false
 features = ["voice", "client", "gateway", "model", "cache"]
