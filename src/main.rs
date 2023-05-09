@@ -133,6 +133,7 @@ async fn set(
     #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     set_sound(ctx, url, local).await
 }
 
@@ -143,6 +144,7 @@ async fn set_local(
     #[description = "Joinsound URL."] url: String
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     set_sound(ctx, url, true).await
 }
 
@@ -153,6 +155,7 @@ async fn view(
     #[description = "If true, the joinsound local to this server will be shown."] #[flag] local: bool
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Fetching...").await {
         Ok(message) => {
             let guild_id = match ctx.guild()
@@ -200,6 +203,7 @@ async fn remove(
     #[description = "If true, the joinsound local to this server will be removed."] #[flag] local: bool
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
         Ok(message) => {
             let guild_id = match ctx.guild()
@@ -247,6 +251,7 @@ async fn leave(
     ctx: Context<'_>,
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Leaving...").await {
         Ok(message) => {
             if let Some(guild_id) = ctx.guild_id()
@@ -307,6 +312,7 @@ async fn support(
     ctx: Context<'_>,
 ) -> Result<(), Error>
 {
+    ctx.defer_ephemeral().await?;
     ctx.send(|f| f
         .embed(|f| f
             .title("Join Sound Johnson Support Server")
