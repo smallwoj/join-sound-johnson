@@ -10,7 +10,7 @@ pub fn connect() -> MysqlConnection
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
 
-pub fn create_new_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Option<poise::serenity_prelude::GuildId>, file_path: String, url: String)
+pub fn create_new_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Option<poise::serenity_prelude::GuildId>, file_path: String)
 {
     let connection = &mut connect();
     let guild_string : String;
@@ -25,7 +25,7 @@ pub fn create_new_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: 
         discord_id: &user_id.to_string(),
         guild_id: guild_option,
         file_path: &file_path,
-        video_url: &url,
+        video_url: &"",
     };
     diesel::insert_into(schema::joinsounds::table)
         .values(&new_sound)
@@ -33,7 +33,7 @@ pub fn create_new_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: 
         .expect("Error saving new joinsound");
 }
 
-pub fn update_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Option<poise::serenity_prelude::GuildId>, file_path: String, url: String)
+pub fn update_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Option<poise::serenity_prelude::GuildId>, file_path: String)
 {
     if let Some(guild) = guild_id
     {
@@ -44,7 +44,7 @@ pub fn update_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Opti
             discord_id: &user_id.to_string(),
             guild_id: guild_option,
             file_path: &file_path.to_string(),
-            video_url: &url.clone(),
+            video_url: &"",
         };
         diesel::update(schema::joinsounds::table)
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
@@ -60,7 +60,7 @@ pub fn update_joinsound(user_id: poise::serenity_prelude::UserId, guild_id: Opti
             discord_id: &user_id.to_string(),
             guild_id: None,
             file_path: &file_path.to_string(),
-            video_url: &url.clone(),
+            video_url: &"",
         };
         diesel::update(schema::joinsounds::table)
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))

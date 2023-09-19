@@ -1,3 +1,4 @@
+use poise::serenity_prelude::Attachment;
 use songbird::SerenityInit;
 use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
@@ -8,8 +9,6 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 mod event_listener;
-
-const TOASTLORD_ID: poise::serenity_prelude::UserId = poise::serenity_prelude::UserId(90237200909729792);
 
 /// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
@@ -44,23 +43,9 @@ Set a sound to play everytime you join a voice channel!",
     Ok(())
 }
 
-/// Register application commands in this guild or globally
-///
-/// Run with no arguments to register in guild, run with argument "global" to register globally.
-#[poise::command(prefix_command, hide_in_help)]
-async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
+async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error>
 {
-    if ctx.author().id == TOASTLORD_ID
-    {
-        poise::builtins::register_application_commands(ctx, global).await?;
-    }
-
-    Ok(())
-}
-
-async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Error>
-{
-    println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
+    println!("{:?} trying to set {} sound {:?}", ctx.author(), if local {"local"} else {"global"}, attachment);
 
     match ctx.say("🔃 Downloading...").await {
         Ok(message) => {
@@ -81,7 +66,7 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
         
             if database::has_sound(ctx.author().id, guild_id)
             {
-                if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
+                if let Err(why) = match database::update_sound(ctx.author().id, attachment, guild_id).await
                 {
                     Ok(_) => {
                         message.edit(ctx, |f| f
@@ -100,7 +85,7 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
             }
             else
             {
-                if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
+                if let Err(why) = match database::upload_sound(ctx.author().id, attachment, guild_id).await
                 {
                     Ok(_) => {
                         
@@ -129,23 +114,25 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set(
     ctx: Context<'_>,
-    #[description = "Joinsound URL."] url: String,
+    #[description = "Joinsound."] attachment: Attachment,
     #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
 ) -> Result<(), Error>
 {
     ctx.defer_ephemeral().await?;
-    set_sound(ctx, url, local).await
+    set_sound(ctx, attachment, local).await?;
+    Ok(())
 }
 
 /// Set a sound that is local to this discord server.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set_local(
     ctx: Context<'_>, 
-    #[description = "Joinsound URL."] url: String
+    #[description = "Joinsound."] attachment: Attachment,
 ) -> Result<(), Error>
 {
     ctx.defer_ephemeral().await?;
-    set_sound(ctx, url, true).await
+    set_sound(ctx, attachment, true).await?;
+    Ok(())
 }
 
 /// View what your joinsound currently is.
@@ -335,6 +322,8 @@ async fn main()
         .setup(move |ctx, _ready, _framework| Box::pin(async move { 
             let activity = Activity::watching("j!help");
             ctx.set_presence(Some(activity), OnlineStatus::Online).await;
+            poise::builtins::register_in_guild(ctx, &_framework.options().commands, poise::serenity_prelude::GuildId(764746270026760244)).await?;
+            poise::builtins::register_globally(ctx, &_framework.options().commands).await?;
 
             Ok(())
         }))
@@ -347,7 +336,6 @@ async fn main()
             commands: vec![
                 help(),
                 ping(),
-                register(),
                 set(),
                 set_local(),
                 view(),

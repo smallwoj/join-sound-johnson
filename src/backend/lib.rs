@@ -1,5 +1,6 @@
 #[macro_use] extern crate diesel;
 
+use attachments::validate_attachment;
 use chrono::Duration;
 use diesel::dsl::{
     select,
@@ -14,11 +15,10 @@ use poise::serenity_prelude as serenity;
 pub mod models;
 pub mod schema;
 pub mod youtube;
+pub mod attachments;
 pub mod database;
 
-use database::{
-    connect,
-};
+use database::connect;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -227,10 +227,14 @@ pub fn get_last_played(user_id: serenity::UserId, guild: Option<serenity::GuildI
     }
 }
 
-pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
+pub async fn upload_sound(user_id: serenity::UserId, attachment: serenity::Attachment, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
 {
+    // check if attachment is a video
+    if !validate_attachment(attachment.clone()) {
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Attachment is not a video or an audio file.")));
+    }
     // check video length
-    match youtube::get_video_length(&url.clone())
+    match attachments::get_length(attachment.clone()).await
     {
         Ok(length) =>
         {
@@ -240,40 +244,23 @@ pub fn upload_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
             }
             else
             {
-                if let Some(guild) = guild_id
-                {
-                    match youtube::download_video(&url, user_id, guild_id)
-                    {
-                        Ok(file_path) =>
-                        {
-                            database::create_new_joinsound(user_id, Some(guild), file_path, url);
-                            return Ok(());
-                        },
-                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
-                    }
-                }
-                else
-                {
-                    match youtube::download_video(&url, user_id, None)
-                    {
-                        Ok(file_path) =>
-                        {
-                            database::create_new_joinsound(user_id, None, file_path, url);
-                            return Ok(());
-                        },
-                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
-                    }
-                }            
+                let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
+                database::create_new_joinsound(user_id, guild_id, file_path);
+                return Ok(());
             }
         },
         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
     }
 }
 
-pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
+pub async fn update_sound(user_id: serenity::UserId, attachment: serenity::Attachment, guild_id: Option<serenity::GuildId>) -> Result<(), Error>
 {
+    // check if attachment is a video
+    if !validate_attachment(attachment.clone()) {
+        return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, "Attachment is not a video or an audio file.")));
+    }    
     // check video length
-    match youtube::get_video_length(&url.clone())
+    match attachments::get_length(attachment.clone()).await
     {
         Ok(length) =>
         {
@@ -283,30 +270,13 @@ pub fn update_sound(user_id: serenity::UserId, url: String, guild_id: Option<ser
             }
             else
             {
-                if let Some(guild) = guild_id
-                {
-                    match youtube::download_video(&url, user_id, guild_id)
-                    {
-                        Ok(file_path) =>
-                        {
-                            database::update_joinsound(user_id, Some(guild), file_path, url);
-                            return Ok(());
-                        },
-                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
-                    }
+                // remove the sound first
+                if has_sound(user_id, guild_id) {
+                    remove_sound(user_id, guild_id)?;
                 }
-                else
-                {
-                    match youtube::download_video(&url, user_id, None)
-                    {
-                        Ok(file_path) =>
-                        {
-                            database::update_joinsound(user_id, None, file_path, url);
-                            return Ok(());
-                        },
-                        Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
-                    }
-                }
+                let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
+                database::update_joinsound(user_id, guild_id, file_path);
+                return Ok(());
             }
         },
         Err(e) => return Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
