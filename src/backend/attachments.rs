@@ -1,10 +1,10 @@
 use std::path::Path;
 
-use ffmpeg_next as ffmpeg;
 use chrono::Duration;
 use poise::serenity_prelude as serenity;
 use tokio::fs;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
+use std::process::Command;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -25,24 +25,8 @@ async fn save_video_as_audio(attachment: serenity::Attachment, file_path: &Path)
     let temp_file_path = Path::new("/tmp")
         .join(format!("joinsounds_{}_{}", attachment_id.as_u64(), filename));
     save_attachment(attachment, temp_file_path.as_path()).await?;
-    match ffmpeg::format::input(&temp_file_path) {
-        Ok(ictx) => {
-            match ffmpeg::format::output(&file_path) {
-                Ok(mut octx) => {
-                    let stream = ictx
-                        .streams()
-                        .best(ffmpeg::media::Type::Audio)
-                        .expect("Attachment does not have audio!");
-                    let codec = ffmpeg::encoder::find(octx.format().codec(&file_path, ffmpeg::media::Type::Audio))
-                        .expect("Failed to find encoder")
-                        .audio()?;
-                    octx.add_stream(stream.codec().codec().unwrap())?;
-                },
-                Err(why) => return Err(Box::new(why)),
-            }
-        },
-        Err(why) => return Err(Box::new(why)),
-    }
+ 
+    panic!("not implemented yet");
     Ok(())
 }
 
@@ -60,10 +44,18 @@ pub async fn get_length(attachment: serenity::Attachment) -> Result<Duration, Er
     let file_path = Path::new("/tmp")
         .join(format!("joinsounds_{}_{}", attachment_id.as_u64(), filename));
     save_attachment(attachment, file_path.as_path()).await?;
-    let duration_seconds = match ffmpeg::format::input(&file_path) {
-        Ok(context) => context.duration() as f64 / f64::from(ffmpeg::ffi::AV_TIME_BASE),
-        Err(why) => return Err(Box::new(why)),
-    };
+    let output = Command::new("ffprobe")
+                         .arg("-v")
+                         .arg("error")
+                         .arg("-show_entries")
+                         .arg("format=duration")
+                         .arg("-of")
+                         .arg("default=noprint_wrappers=1:nokey=1")
+                         .arg(file_path.as_os_str())
+                         .output()
+                         .expect("Could not get duration of file.");
+    let str_output = std::str::from_utf8(&output.stdout).unwrap_or("").trim();
+    let duration_seconds = str_output.parse::<f64>().unwrap_or(10000.0);
     println!("length is {}", duration_seconds);
     Ok(Duration::seconds(duration_seconds.round() as i64))
 }
