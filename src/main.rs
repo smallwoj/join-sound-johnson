@@ -363,7 +363,6 @@ async fn main()
                 },
                 (_, _) => {},
             }
-            poise::builtins::register_in_guild(ctx, &framework.options().commands, poise::serenity_prelude::GuildId(764746270026760244)).await?;
 
             Ok(())
         }))
