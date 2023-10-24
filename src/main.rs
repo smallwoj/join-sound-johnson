@@ -310,13 +310,6 @@ async fn support(
     Ok(())
 }
 
-/// Register commands
-#[poise::command(prefix_command)]
-async fn register(ctx: Context<'_>) -> Result<(), Error> {
-    poise::builtins::register_application_commands_buttons(ctx).await?;
-    Ok(())
-}
-
 #[tokio::main]
 async fn main()
 {
@@ -326,13 +319,55 @@ async fn main()
 
     poise::Framework::builder()
         .token(token)
-        .setup(move |ctx, _ready, _framework| Box::pin(async move { 
+        .setup(move |ctx, _ready, framework| Box::pin(async move { 
             let activity = Activity::watching("j!help");
             ctx.set_presence(Some(activity), OnlineStatus::Online).await;
+            let register_method = match std::env::var("JSJ_REGISTER_METHOD") {
+                Ok(method) => match method.as_str() {
+                    "register" => Some("register"),
+                    "delete" => Some("delete"),
+                    _ => None,
+                },
+                Err(_) => None,
+            };
+            let register_context = match std::env::var("JSJ_REGISTER_CONTEXT") {
+                Ok(context) => match context.as_str() {
+                    "global" => Some("global"),
+                    "guild" => Some("guild"),
+                    _ => None,
+                },
+                Err(_) => None,
+            };
+            match (register_method, register_context) {
+                (Some("register"), Some("global")) => {
+                    println!("registering all commands globally");
+                    poise::builtins::register_globally(ctx, &framework.options().commands).await?;
+                    std::process::exit(0);
+                },
+                (Some("delete"), Some("global")) => {
+                    println!("removing all global commands");
+                    poise::serenity_prelude::Command::set_global_application_commands(ctx, |b| b).await?;
+                    std::process::exit(0);
+                },
+                (Some("register"), Some("guild")) => {
+                    let guild_id = std::env::var("JSJ_GUILD_ID").expect("JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"").parse::<u64>().unwrap();
+                    println!("registering all commands in guild {}", guild_id);
+                    poise::builtins::register_in_guild(ctx, &framework.options().commands, poise::serenity_prelude::GuildId(guild_id)).await?;
+                    std::process::exit(0);
+                },
+                (Some("delete"), Some("guild")) => {
+                    let guild_id = std::env::var("JSJ_GUILD_ID").expect("JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"").parse::<u64>().unwrap();
+                    println!("deleting all commands locally in guild {}", guild_id);
+                    poise::serenity_prelude::GuildId(guild_id).set_application_commands(ctx, |b| b).await?;
+                    std::process::exit(0);
+                },
+                (_, _) => {},
+            }
+            poise::builtins::register_in_guild(ctx, &framework.options().commands, poise::serenity_prelude::GuildId(764746270026760244)).await?;
 
             Ok(())
         }))
-        .intents(GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
+        .intents(GatewayIntents::non_privileged() | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
@@ -347,7 +382,6 @@ async fn main()
                 remove(),
                 leave(),
                 support(),
-                register(),
             ],
             event_handler: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
