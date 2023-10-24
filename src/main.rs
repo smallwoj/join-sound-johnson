@@ -310,6 +310,13 @@ async fn support(
     Ok(())
 }
 
+/// Register commands
+#[poise::command(prefix_command)]
+async fn register(ctx: Context<'_>) -> Result<(), Error> {
+    poise::builtins::register_application_commands_buttons(ctx).await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main()
 {
@@ -322,12 +329,10 @@ async fn main()
         .setup(move |ctx, _ready, _framework| Box::pin(async move { 
             let activity = Activity::watching("j!help");
             ctx.set_presence(Some(activity), OnlineStatus::Online).await;
-            poise::builtins::register_in_guild(ctx, &_framework.options().commands, poise::serenity_prelude::GuildId(764746270026760244)).await?;
-            poise::builtins::register_globally(ctx, &_framework.options().commands).await?;
 
             Ok(())
         }))
-        .intents(GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
+        .intents(GatewayIntents::non_privileged() | GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
@@ -342,6 +347,7 @@ async fn main()
                 remove(),
                 leave(),
                 support(),
+                register(),
             ],
             event_handler: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
