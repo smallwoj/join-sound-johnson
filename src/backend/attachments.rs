@@ -1,5 +1,5 @@
 use std::path::Path;
-
+use regex::Regex;
 use chrono::Duration;
 use poise::serenity_prelude as serenity;
 use tokio::fs;
@@ -25,8 +25,27 @@ async fn save_video_as_audio(attachment: serenity::Attachment, file_path: &Path)
     let temp_file_path = Path::new("/tmp")
         .join(format!("joinsounds_{}_{}", attachment_id.as_u64(), filename));
     save_attachment(attachment, temp_file_path.as_path()).await?;
- 
-    panic!("not implemented yet");
+
+    // touch file to make it exist
+    OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(file_path)
+        .await?;
+    let mut cmd = Command::new("ffmpeg");
+            cmd.arg("-y")
+            .arg("-i")
+            .arg(temp_file_path.as_os_str())
+            .arg(file_path.as_os_str());
+    println!("{:#?}", cmd);
+    let output = Command::new("ffmpeg")
+            .arg("-y")
+            .arg("-i")
+            .arg(temp_file_path.as_os_str())
+            .arg(file_path.as_os_str())
+            .output()
+            .expect("Could not convert the video to audio");
+    println!("{:#?}", output);
     Ok(())
 }
 
@@ -86,10 +105,23 @@ pub async fn download_sound(attachment: serenity::Attachment, discord_id: sereni
         }
     }
 
-    let file = folder.join(&attachment.filename);
+    let mut file = folder.join(&attachment.filename);
     if let Some(ref content_type) = attachment.content_type {
         if content_type.contains("video") {
-            save_video_as_audio(attachment, file.as_path()).await?;
+            let new_filename = if attachment.filename.contains(".") {
+                let re = Regex::new("(.*)\\.(.*)$").unwrap();
+                println!("{}", re);
+                let (_, [name, _extension]) = re.captures(&attachment.filename).unwrap_or(re.captures("joinsound.mp4").unwrap()).extract();
+                println!("{} {}", name, _extension);
+                name.to_owned() + ".mp3" 
+            } else {
+                attachment.clone().filename + ".mp3"
+            };
+            println!("filename is {}, folder is {}", new_filename, folder.display());
+            let new_filepath = folder.join(new_filename);
+            println!("final file path: {}", new_filepath.display());
+            save_video_as_audio(attachment, new_filepath.as_path()).await?;
+            file = new_filepath;
         }
         else {
             save_attachment(attachment, file.as_path()).await?;

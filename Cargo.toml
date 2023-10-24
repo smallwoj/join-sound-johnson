@@ -12,14 +12,18 @@ dotenv = "0.15.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 poise = { version = "0.5.0", features = ["collector", "cache"]}
 songbird = "0.3.2"
+regex = "1.10.1"
+
 [dependencies.serenity]
 default-features = false
 features = ["voice", "client", "gateway", "model", "cache"]
 version = "0.11"
 
+
 [lib]
 name = "jsj_backend"
 path = "src/backend/lib.rs"
+
 
 [[bin]]
 name = "join-sound-johnson"
