@@ -315,6 +315,40 @@ async fn support(
     Ok(())
 }
 
+/// Gives a link to the terms of service.
+#[poise::command(slash_command, track_edits)]
+async fn tos(
+    ctx: Context<'_>,
+) -> Result<(), Error>
+{
+    ctx.defer_ephemeral().await?;
+    ctx.send(|f| f
+        .embed(|f| f
+            .title("Join Sound Johnson Terms of Service")
+            .description("You can find the Terms of Service at https://join-sound-johnson.netlify.app/#/terms-of-service.")
+        )
+        .ephemeral(true)
+    ).await?;
+    Ok(())
+}
+
+/// Gives a link to the privacy policy.
+#[poise::command(slash_command, track_edits)]
+async fn privacy_policy(
+    ctx: Context<'_>,
+) -> Result<(), Error>
+{
+    ctx.defer_ephemeral().await?;
+    ctx.send(|f| f
+        .embed(|f| f
+            .title("Join Sound Johnson Privacy Policy")
+            .description("You can find the Privacy Policy at https://join-sound-johnson.netlify.app/#/privacy-policy.")
+        )
+        .ephemeral(true)
+    ).await?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main()
 {
@@ -386,6 +420,8 @@ async fn main()
                 remove(),
                 leave(),
                 support(),
+                tos(),
+                privacy_policy(),
             ],
             event_handler: |ctx, event, framework, user_data| {
                 Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
