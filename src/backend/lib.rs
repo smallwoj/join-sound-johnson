@@ -123,26 +123,26 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
     }
 }
 
-pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<String, String>
+pub fn get_sound_path(user_id: serenity::UserId, guild: Option<serenity::GuildId>) -> Result<String, String>
 {
     let connection = &mut connect();
 
     if let Some(guild_id) = guild
     {
         // Check local sound first
-        if let Ok(video_url) = schema::joinsounds::table
+        if let Ok(file_path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
-            .select(schema::joinsounds::video_url)
+            .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(url) = video_url
+            if let Some(path) = file_path
             {
-                return Ok(String::from(url));
+                return Ok(String::from(path));
             }
             else
             {
-                return Err("url is null".to_string());
+                return Err("path is null".to_string());
             }
         }
         else
@@ -153,19 +153,19 @@ pub fn get_sound_url(user_id: serenity::UserId, guild: Option<serenity::GuildId>
     else
     {
         // Check global sound
-        if let Ok(video_url) = schema::joinsounds::table
+        if let Ok(file_path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
-            .select(schema::joinsounds::video_url)
+            .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(url) = video_url
+            if let Some(path) = file_path
             {
-                return Ok(String::from(url));
+                return Ok(String::from(path));
             }
             else
             {
-                return Err("url is null".to_string());
+                return Err("path is null".to_string());
             }
         }
         else

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use poise::serenity_prelude::Attachment;
 use songbird::SerenityInit;
 use serenity::model::gateway::{Activity, GatewayIntents};
@@ -160,11 +162,14 @@ async fn view(
                 None => None,
             };
         
-            if let Err(why) = match database::get_sound_url(ctx.author().id, guild_id)
+            if let Err(why) = match database::get_sound_path(ctx.author().id, guild_id)
             {
-                Ok(url) => {
+                Ok(path) => {
+                    let file_path = Path::new(&path);
+                    let attachment_type = poise::serenity_prelude::AttachmentType::Path(file_path);
                     message.edit(ctx, |f| f
-                        .content(format!("✅ Your joinsound url is {}", url))
+                        .content(format!("✅ Your joinsound is:"))
+                        .attachment(attachment_type)
                     ).await
                 },
                 Err(why) => {
