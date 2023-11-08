@@ -319,7 +319,7 @@ async fn main() {
         .token(token)
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                let activity = Activity::watching("j!help");
+                let activity = Activity::watching("/set an attachment!");
                 ctx.set_presence(Some(activity), OnlineStatus::Online).await;
                 let register_method = match std::env::var("JSJ_REGISTER_METHOD") {
                     Ok(method) => match method.as_str() {
