@@ -1,7 +1,10 @@
-use songbird::SerenityInit;
+use std::path::Path;
+
+use jsj_backend as database;
+use poise::serenity_prelude::Attachment;
 use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
-use jsj_backend as database;
+use songbird::SerenityInit;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -9,14 +12,9 @@ type Context<'a> = poise::Context<'a, Data, Error>;
 
 mod event_listener;
 
-const TOASTLORD_ID: poise::serenity_prelude::UserId = poise::serenity_prelude::UserId(90237200909729792);
-
 /// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
-pub async fn ping(
-    ctx: Context<'_>,
-) -> Result<(), Error>
-{
+pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Pong!").await?;
 
     Ok(())
@@ -44,82 +42,62 @@ Set a sound to play everytime you join a voice channel!",
     Ok(())
 }
 
-/// Register application commands in this guild or globally
-///
-/// Run with no arguments to register in guild, run with argument "global" to register globally.
-#[poise::command(prefix_command, hide_in_help)]
-async fn register(ctx: Context<'_>, #[flag] global: bool) -> Result<(), Error>
-{
-    if ctx.author().id == TOASTLORD_ID
-    {
-        poise::builtins::register_application_commands(ctx, global).await?;
-    }
-
-    Ok(())
-}
-
-async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Error>
-{
-    println!("{:?} trying to set {} sound {}", ctx.author(), if local {"local"} else {"global"}, url);
+async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error> {
+    println!(
+        "{:?} trying to set {} sound {:?}",
+        ctx.author(),
+        if local { "local" } else { "global" },
+        attachment
+    );
 
     match ctx.say("🔃 Downloading...").await {
         Ok(message) => {
-            let guild_id = match ctx.guild()
-            {
+            let guild_id = match ctx.guild() {
                 Some(guild) => {
-                    if local
-                    {
+                    if local {
                         Some(guild.id)
-                    }
-                    else
-                    {
+                    } else {
                         None
                     }
-                },
+                }
                 None => None,
             };
-        
-            if database::has_sound(ctx.author().id, guild_id)
-            {
-                if let Err(why) = match database::update_sound(ctx.author().id, url, guild_id)
-                {
-                    Ok(_) => {
-                        message.edit(ctx, |f| f
-                            .content(format!("✅ Successful!"))
-                        ).await
-                    },
-                    Err(why) => {
-                        message.edit(ctx, |f| f
-                            .content(format!("❌ Error: {}", why))
-                        ).await
-                    },
-                }
-                {
-                    println!("Error sending message: {}", why);
-                }
-            }
-            else
-            {
-                if let Err(why) = match database::upload_sound(ctx.author().id, url, guild_id)
-                {
-                    Ok(_) => {
-                        
-                        message.edit(ctx, |f| f
-                            .content(format!("✅ Successful!"))
-                        ).await
-                    },
-                    Err(why) => {
-                        message.edit(ctx, |f| f
-                            .content(format!("❌ Error: {}", why))
-                        ).await
-                    },
-                }
+
+            if database::has_sound(ctx.author().id, guild_id) {
+                if let Err(why) =
+                    match database::update_sound(ctx.author().id, attachment, guild_id).await {
+                        Ok(_) => {
+                            message
+                                .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                                .await
+                        }
+                        Err(why) => {
+                            message
+                                .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                                .await
+                        }
+                    }
                 {
                     println!("Error sending message: {}", why);
                 }
+            } else if let Err(why) =
+                match database::upload_sound(ctx.author().id, attachment, guild_id).await {
+                    Ok(_) => {
+                        message
+                            .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                            .await
+                    }
+                    Err(why) => {
+                        message
+                            .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                            .await
+                    }
+                }
+            {
+                println!("Error sending message: {}", why);
             }
-        },
-        Err(why) => println!("Error sending message: {}", why)
+        }
+        Err(why) => println!("Error sending message: {}", why),
     }
 
     Ok(())
@@ -129,70 +107,71 @@ async fn set_sound(ctx: Context<'_>, url: String, local: bool) -> Result<(), Err
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set(
     ctx: Context<'_>,
-    #[description = "Joinsound URL."] url: String,
-    #[description = "If true, this joinsound will only play in this server."] #[flag] local: bool
-) -> Result<(), Error>
-{
+    #[description = "Joinsound."] attachment: Attachment,
+    #[description = "If true, this joinsound will only play in this server."]
+    #[flag]
+    local: bool,
+) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    set_sound(ctx, url, local).await
+    set_sound(ctx, attachment, local).await?;
+    Ok(())
 }
 
 /// Set a sound that is local to this discord server.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn set_local(
-    ctx: Context<'_>, 
-    #[description = "Joinsound URL."] url: String
-) -> Result<(), Error>
-{
+    ctx: Context<'_>,
+    #[description = "Joinsound."] attachment: Attachment,
+) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    set_sound(ctx, url, true).await
+    set_sound(ctx, attachment, true).await?;
+    Ok(())
 }
 
 /// View what your joinsound currently is.
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn view(
     ctx: Context<'_>,
-    #[description = "If true, the joinsound local to this server will be shown."] #[flag] local: bool
-) -> Result<(), Error>
-{
+    #[description = "If true, the joinsound local to this server will be shown."]
+    #[flag]
+    local: bool,
+) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Fetching...").await {
         Ok(message) => {
-            let guild_id = match ctx.guild()
-            {
+            let guild_id = match ctx.guild() {
                 Some(guild) => {
-                    if local
-                    {
+                    if local {
                         Some(guild.id)
-                    }
-                    else
-                    {
+                    } else {
                         None
                     }
-                },
+                }
                 None => None,
             };
-        
-            if let Err(why) = match database::get_sound_url(ctx.author().id, guild_id)
-            {
-                Ok(url) => {
-                    message.edit(ctx, |f| f
-                        .content(format!("✅ Your joinsound url is {}", url))
-                    ).await
-                },
+
+            if let Err(why) = match database::get_sound_path(ctx.author().id, guild_id) {
+                Ok(path) => {
+                    let file_path = Path::new(&path);
+                    let attachment_type = poise::serenity_prelude::AttachmentType::Path(file_path);
+                    message
+                        .edit(ctx, |f| {
+                            f.content("✅ Your joinsound is:".to_string())
+                                .attachment(attachment_type)
+                        })
+                        .await
+                }
                 Err(why) => {
-                    message.edit(ctx, |f| f
-                        .content(format!("❌ Error: {}", why))
-                    ).await
-                },
-            }
-            {
+                    message
+                        .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                        .await
+                }
+            } {
                 println!("Error sending message: {}", why);
             }
-
-        },    
-        Err(why) => println!("Error sending message: {}", why)
-    }    
+        }
+        Err(why) => println!("Error sending message: {}", why),
+    }
     Ok(())
 }
 
@@ -200,107 +179,85 @@ async fn view(
 #[poise::command(prefix_command, slash_command, track_edits)]
 async fn remove(
     ctx: Context<'_>,
-    #[description = "If true, the joinsound local to this server will be removed."] #[flag] local: bool
-) -> Result<(), Error>
-{
+    #[description = "If true, the joinsound local to this server will be removed."]
+    #[flag]
+    local: bool,
+) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
         Ok(message) => {
-            let guild_id = match ctx.guild()
-            {
+            let guild_id = match ctx.guild() {
                 Some(guild) => {
-                    if local
-                    {
+                    if local {
                         Some(guild.id)
-                    }
-                    else
-                    {
+                    } else {
                         None
                     }
-                },
+                }
                 None => None,
             };
 
-            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id)
-            {
+            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
                 Ok(_) => {
-                    message.edit(ctx, |f| f
-                        .content(format!("✅ Successful!"))
-                    ).await
-                },
+                    message
+                        .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                        .await
+                }
                 Err(why) => {
-                    message.edit(ctx, |f| f
-                        .content(format!("❌ Error: {}", why))
-                    ).await
-                },
-            }
-            {
+                    message
+                        .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                        .await
+                }
+            } {
                 println!("Error sending message: {}", why);
             }
-        },
+        }
         Err(why) => println!("Error sending message: {}", why),
     };
-
 
     Ok(())
 }
 
 /// Force the bot to leave a voice channel.
 #[poise::command(prefix_command, slash_command, track_edits)]
-async fn leave(
-    ctx: Context<'_>,
-) -> Result<(), Error>
-{
+async fn leave(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Leaving...").await {
         Ok(message) => {
-            if let Some(guild_id) = ctx.guild_id()
-            {
-                let manager = songbird::get(&ctx.serenity_context()).await
-                    .expect("Songbird Voice client placed in at initialisation.").clone();
+            if let Some(guild_id) = ctx.guild_id() {
+                let manager = songbird::get(ctx.serenity_context())
+                    .await
+                    .expect("Songbird Voice client placed in at initialisation.")
+                    .clone();
                 let has_handler = manager.get(guild_id).is_some();
-                if has_handler
-                {
-                    if let Err(why) = manager.remove(guild_id).await
-                    {
+                if has_handler {
+                    if let Err(why) = manager.remove(guild_id).await {
                         println!("Error removing voice client: {}", why);
-                        if let Err(why) = message.edit(ctx, |f| f
-                            .content(format!("❌ Error: {}", why)
-                        )).await
+                        if let Err(why) = message
+                            .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                            .await
                         {
                             println!("Error sending message: {}", why);
                         }
-                    }
-                    else
-                    {
-                        if let Err(why) = message.edit(ctx, |f| f
-                            .content(format!("✅ Successful!")
-                        )).await
-                        {
-                            println!("Error sending message: {}", why);
-                        }
-                    }
-                }
-                else
-                {
-                    if let Err(why) = message.edit(ctx, |f| f
-                        .content(format!("❌ Not in a voice channel.")
-                    )).await
-
+                    } else if let Err(why) = message
+                        .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                        .await
                     {
                         println!("Error sending message: {}", why);
                     }
+                } else if let Err(why) = message
+                    .edit(ctx, |f| f.content("❌ Not in a voice channel.".to_string()))
+                    .await
+                {
+                    println!("Error sending message: {}", why);
                 }
+            } else {
+                message
+                    .edit(ctx, |f| f.content("❌ Not in a voice channel.".to_string()))
+                    .await?;
             }
-            else
-            {
-                message.edit(ctx, |f| f
-                    .content(format!("❌ Not in a voice channel.")
-                )).await?;
-            }
-
-        },
-        Err(why) => println!("Error sending message: {}", why)
+        }
+        Err(why) => println!("Error sending message: {}", why),
     };
 
     Ok(())
@@ -308,27 +265,25 @@ async fn leave(
 
 /// Gives a link to the support server.
 #[poise::command(slash_command, track_edits)]
-async fn support(
-    ctx: Context<'_>,
-) -> Result<(), Error>
-{
+async fn support(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    ctx.send(|f| f
-        .embed(|f| f
-            .title("Join Sound Johnson Support Server")
-            .description("You can join the support server at https://discord.gg/KZA8TFMwPN.")
-        )
-        .ephemeral(true) // this one only applies in application commands though
-    ).await?;
+    ctx.send(
+        |f| {
+            f.embed(|f| {
+                f.title("Join Sound Johnson Support Server").description(
+                    "You can join the support server at https://discord.gg/KZA8TFMwPN.",
+                )
+            })
+            .ephemeral(true)
+        }, // this one only applies in application commands though
+    )
+    .await?;
     Ok(())
 }
 
 /// Gives a link to the terms of service.
 #[poise::command(slash_command, track_edits)]
-async fn tos(
-    ctx: Context<'_>,
-) -> Result<(), Error>
-{
+async fn tos(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     ctx.send(|f| f
         .embed(|f| f
@@ -342,10 +297,7 @@ async fn tos(
 
 /// Gives a link to the privacy policy.
 #[poise::command(slash_command, track_edits)]
-async fn privacy_policy(
-    ctx: Context<'_>,
-) -> Result<(), Error>
-{
+async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     ctx.send(|f| f
         .embed(|f| f
@@ -358,22 +310,85 @@ async fn privacy_policy(
 }
 
 #[tokio::main]
-async fn main()
-{
+async fn main() {
     dotenv::dotenv().ok();
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
 
     poise::Framework::builder()
         .token(token)
-        .setup(move |ctx, _ready, _framework| Box::pin(async move { 
-            let activity = Activity::watching("j!help");
-            ctx.set_presence(Some(activity), OnlineStatus::Online).await;
-            poise::builtins::register_globally(ctx, &_framework.options().commands).await?;
+        .setup(move |ctx, _ready, framework| {
+            Box::pin(async move {
+                let activity = Activity::watching("j!help");
+                ctx.set_presence(Some(activity), OnlineStatus::Online).await;
+                let register_method = match std::env::var("JSJ_REGISTER_METHOD") {
+                    Ok(method) => match method.as_str() {
+                        "register" => Some("register"),
+                        "delete" => Some("delete"),
+                        _ => None,
+                    },
+                    Err(_) => None,
+                };
+                let register_context = match std::env::var("JSJ_REGISTER_CONTEXT") {
+                    Ok(context) => match context.as_str() {
+                        "global" => Some("global"),
+                        "guild" => Some("guild"),
+                        _ => None,
+                    },
+                    Err(_) => None,
+                };
+                match (register_method, register_context) {
+                    (Some("register"), Some("global")) => {
+                        println!("registering all commands globally");
+                        poise::builtins::register_globally(ctx, &framework.options().commands)
+                            .await?;
+                        std::process::exit(0);
+                    }
+                    (Some("delete"), Some("global")) => {
+                        println!("removing all global commands");
+                        poise::serenity_prelude::Command::set_global_application_commands(
+                            ctx,
+                            |b| b,
+                        )
+                        .await?;
+                        std::process::exit(0);
+                    }
+                    (Some("register"), Some("guild")) => {
+                        let guild_id = std::env::var("JSJ_GUILD_ID")
+                            .expect(
+                                "JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"",
+                            )
+                            .parse::<u64>()
+                            .unwrap();
+                        println!("registering all commands in guild {}", guild_id);
+                        poise::builtins::register_in_guild(
+                            ctx,
+                            &framework.options().commands,
+                            poise::serenity_prelude::GuildId(guild_id),
+                        )
+                        .await?;
+                        std::process::exit(0);
+                    }
+                    (Some("delete"), Some("guild")) => {
+                        let guild_id = std::env::var("JSJ_GUILD_ID")
+                            .expect(
+                                "JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"",
+                            )
+                            .parse::<u64>()
+                            .unwrap();
+                        println!("deleting all commands locally in guild {}", guild_id);
+                        poise::serenity_prelude::GuildId(guild_id)
+                            .set_application_commands(ctx, |b| b)
+                            .await?;
+                        std::process::exit(0);
+                    }
+                    (_, _) => {}
+                }
 
-            Ok(())
-        }))
-        .intents(GatewayIntents::MESSAGE_CONTENT | GatewayIntents::GUILDS | GatewayIntents::GUILD_VOICE_STATES)
+                Ok(())
+            })
+        })
+        .intents(GatewayIntents::non_privileged() | GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
@@ -382,7 +397,6 @@ async fn main()
             commands: vec![
                 help(),
                 ping(),
-                register(),
                 set(),
                 set_local(),
                 view(),
@@ -393,11 +407,15 @@ async fn main()
                 privacy_policy(),
             ],
             event_handler: |ctx, event, framework, user_data| {
-                Box::pin(event_listener::event_listener(ctx, event, framework, user_data))
+                Box::pin(event_listener::event_listener(
+                    ctx, event, framework, user_data,
+                ))
             },
             ..Default::default()
         })
         .client_settings(|c| c.register_songbird())
         .initialize_owners(true)
-        .run().await.unwrap();
+        .run()
+        .await
+        .unwrap();
 }
