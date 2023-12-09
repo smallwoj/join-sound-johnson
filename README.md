@@ -5,7 +5,7 @@
 
 <h1 align="center">About</h1>
 
-Join Sound Johnson is a Discord bot that allows you to set a YouTube link to a video that plays when you connect to a voice channel!
+Join Sound Johnson is a Discord bot that allows you to set an audio or video attachment that plays when you connect to a voice channel!
 
 Specifically, this is a rewrite of [my old discord.py bot](https://github.com/smallwoj/join-sound-johnson-py) using the Discord Rust ecosystem.
 
