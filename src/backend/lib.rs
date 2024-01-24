@@ -7,6 +7,7 @@ use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
+use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
 
@@ -65,7 +66,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
     {
         if let Some(joinsound_path) = path {
             if let Err(why) = set_last_played(user_id, Some(guild)) {
-                println!("Error setting last played: {}", why);
+                error!("Error setting last played: {}", why);
             }
 
             return Ok(Path::new(&joinsound_path).to_path_buf());
@@ -82,7 +83,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
         {
             if let Some(joinsound_path) = path {
                 if let Err(why) = set_last_played(user_id, None) {
-                    println!("Error setting last played: {}", why);
+                    error!("Error setting last played: {}", why);
                 }
 
                 return Ok(Path::new(&joinsound_path).to_path_buf());
@@ -254,7 +255,7 @@ pub fn set_last_played(
             .execute(connection)
             .expect("Error setting last played");
     }
-    println!("Set last played to {}", timestamp);
+    info!("Set last played to {}", timestamp);
     Ok(())
 }
 

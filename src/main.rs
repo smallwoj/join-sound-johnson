@@ -6,6 +6,8 @@ use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
+use tracing::{error, info, instrument};
+
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -14,7 +16,15 @@ mod event_listener;
 
 /// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="ping",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Called ping command");
     ctx.say("Pong!").await?;
 
     Ok(())
@@ -22,12 +32,20 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Show this help menu.
 #[poise::command(prefix_command, track_edits, slash_command)]
+#[instrument(
+    name="help",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn help(
     ctx: Context<'_>,
     #[description = "Specific command to show help about"]
     #[autocomplete = "poise::builtins::autocomplete_command"]
     command: Option<String>,
 ) -> Result<(), Error> {
+    info!("Called help command");
     poise::builtins::help(
         ctx,
         command.as_deref(),
@@ -42,13 +60,17 @@ Set a sound to play everytime you join a voice channel!",
     Ok(())
 }
 
+#[instrument(
+    name="set_sound",
+    skip(ctx, attachment),
+    fields(
+        user_id=%ctx.author(),
+        attachment_id=%attachment.id,
+        file_name=%attachment.filename,
+    )
+)]
 async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error> {
-    println!(
-        "{:?} trying to set {} sound {:?}",
-        ctx.author(),
-        if local { "local" } else { "global" },
-        attachment
-    );
+    info!("Trying to set sound");
 
     match ctx.say("🔃 Downloading...").await {
         Ok(message) => {
@@ -78,7 +100,7 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                         }
                     }
                 {
-                    println!("Error sending message: {}", why);
+                    error!("Error sending message: {}", why);
                 }
             } else if let Err(why) =
                 match database::upload_sound(ctx.author().id, attachment, guild_id).await {
@@ -94,10 +116,10 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                     }
                 }
             {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     }
 
     Ok(())
@@ -130,12 +152,20 @@ async fn set_local(
 
 /// View what your joinsound currently is.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="view",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn view(
     ctx: Context<'_>,
     #[description = "If true, the joinsound local to this server will be shown."]
     #[flag]
     local: bool,
 ) -> Result<(), Error> {
+    info!("Viewing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Fetching...").await {
         Ok(message) => {
@@ -167,22 +197,30 @@ async fn view(
                         .await
                 }
             } {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     }
     Ok(())
 }
 
 /// Remove a joinsound.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn remove(
     ctx: Context<'_>,
     #[description = "If true, the joinsound local to this server will be removed."]
     #[flag]
     local: bool,
 ) -> Result<(), Error> {
+    info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
         Ok(message) => {
@@ -209,10 +247,10 @@ async fn remove(
                         .await
                 }
             } {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     };
 
     Ok(())
@@ -220,7 +258,15 @@ async fn remove(
 
 /// Force the bot to leave a voice channel.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="leave",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn leave(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Leaving voice channel");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Leaving...").await {
         Ok(message) => {
@@ -232,24 +278,24 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                 let has_handler = manager.get(guild_id).is_some();
                 if has_handler {
                     if let Err(why) = manager.remove(guild_id).await {
-                        println!("Error removing voice client: {}", why);
+                        error!("Error removing voice client: {}", why);
                         if let Err(why) = message
                             .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
                             .await
                         {
-                            println!("Error sending message: {}", why);
+                            error!("Error sending message: {}", why);
                         }
                     } else if let Err(why) = message
                         .edit(ctx, |f| f.content("✅ Successful!".to_string()))
                         .await
                     {
-                        println!("Error sending message: {}", why);
+                        error!("Error sending message: {}", why);
                     }
                 } else if let Err(why) = message
                     .edit(ctx, |f| f.content("❌ Not in a voice channel.".to_string()))
                     .await
                 {
-                    println!("Error sending message: {}", why);
+                    error!("Error sending message: {}", why);
                 }
             } else {
                 message
@@ -257,7 +303,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                     .await?;
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     };
 
     Ok(())
@@ -265,7 +311,15 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the support server.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="support",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn support(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending support server link");
     ctx.defer_ephemeral().await?;
     ctx.send(
         |f| {
@@ -283,7 +337,15 @@ async fn support(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the terms of service.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="tos",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn tos(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending tos");
     ctx.defer_ephemeral().await?;
     ctx.send(|f| f
         .embed(|f| f
@@ -297,7 +359,15 @@ async fn tos(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the privacy policy.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="privacy-policy",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending privacy policy");
     ctx.defer_ephemeral().await?;
     ctx.send(|f| f
         .embed(|f| f
@@ -314,6 +384,11 @@ async fn main() {
     dotenv::dotenv().ok();
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
+
+    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    if let Err(why) = tracing::subscriber::set_global_default(subscriber) {
+        panic!("{}", why);
+    }
 
     poise::Framework::builder()
         .token(token)

@@ -2,13 +2,14 @@ use serenity::async_trait;
 use serenity::prelude::Mutex;
 use songbird::{Call, EventContext as SongbirdEventContext, EventHandler as SongbirdEventHandler};
 use std::sync::Arc;
+use tracing::{error, info, instrument, warn};
 
 use super::database;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
-//type Context<'a> = poise::Context<'a, Data, Error>;
 
+#[instrument(name = "event-listener", skip(ctx, _framework, _user_data))]
 pub async fn event_listener(
     ctx: &serenity::client::Context,
     event: &poise::Event<'_>,
@@ -17,11 +18,11 @@ pub async fn event_listener(
 ) -> Result<(), Error> {
     match event {
         poise::Event::Ready { data_about_bot } => {
-            println!("{} is connected!", data_about_bot.user.name);
+            info!("{} is connected!", data_about_bot.user.name);
         }
         poise::Event::VoiceStateUpdate { old, new } => {
             if old.is_none() {
-                println!(
+                info!(
                     "{:?} joined voice channel in {:?}",
                     new.user_id, new.guild_id
                 );
@@ -53,7 +54,7 @@ pub async fn event_listener(
                             if chrono::Utc::now().naive_utc().timestamp() - last_played.timestamp()
                                 < 30
                             {
-                                println!("Too soon to play sound.");
+                                warn!("Too soon to play sound.");
                                 return Ok(());
                             }
                         }
@@ -77,7 +78,7 @@ pub async fn event_listener(
                             if let Some(voice_channel) = new.channel_id {
                                 let _handler = manager.join(guild_id, voice_channel).await;
                             } else {
-                                println!("could not find voice channel");
+                                error!("could not find voice channel");
                                 return Ok(());
                             }
                         }
@@ -87,12 +88,12 @@ pub async fn event_listener(
                                 Ok(joinsound) => match songbird::ffmpeg(joinsound).await {
                                     Ok(source) => source,
                                     Err(why) => {
-                                        println!("Err starting source: {:?}", why);
+                                        error!("Err starting source: {:?}", why);
                                         return Ok(());
                                     }
                                 },
                                 Err(_) => {
-                                    println!("no joinsound");
+                                    error!("no joinsound");
                                     return Ok(());
                                 }
                             };
@@ -106,7 +107,7 @@ pub async fn event_listener(
                                     ),
                                     SongEndNotifier { call },
                                 ) {
-                                    println!("Cannot add event: {}", why);
+                                    error!("Cannot add event: {}", why);
                                 }
                             }
                         };
@@ -120,18 +121,19 @@ pub async fn event_listener(
     Ok(())
 }
 
+#[derive(Debug)]
 struct SongEndNotifier {
     call: Arc<Mutex<Call>>,
 }
 
 #[async_trait]
 impl SongbirdEventHandler for SongEndNotifier {
+    #[instrument(name = "songbird-end-notifier", skip(_ctx))]
     async fn act(&self, _ctx: &SongbirdEventContext<'_>) -> Option<songbird::events::Event> {
-        //tokio::time::sleep(Duration::from_secs(10)).await;
-        println!("leaving now");
+        info!("leaving now");
         let mut handler = (*self.call).lock().await;
         if let Err(why) = handler.leave().await {
-            println!("Error leaving voice channel: {:?}", why);
+            error!("Error leaving voice channel: {:?}", why);
         }
 
         return None;

@@ -5,6 +5,7 @@ use std::path::Path;
 use std::process::Command;
 use tokio::fs;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
+use tracing::info;
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
@@ -43,7 +44,7 @@ async fn save_video_as_audio(
         .arg("-i")
         .arg(temp_file_path.as_os_str())
         .arg(file_path.as_os_str());
-    println!("{:#?}", cmd);
+    info!("{:#?}", cmd);
     let output = Command::new("ffmpeg")
         .arg("-y")
         .arg("-i")
@@ -51,7 +52,7 @@ async fn save_video_as_audio(
         .arg(file_path.as_os_str())
         .output()
         .expect("Could not convert the video to audio");
-    println!("{:#?}", output);
+    info!("{:#?}", output);
     Ok(())
 }
 
@@ -84,7 +85,7 @@ pub async fn get_length(attachment: serenity::Attachment) -> Result<Duration, Er
         .expect("Could not get duration of file.");
     let str_output = std::str::from_utf8(&output.stdout).unwrap_or("").trim();
     let duration_seconds = str_output.parse::<f64>().unwrap_or(10000.0);
-    println!("length is {}", duration_seconds);
+    info!("length is {}", duration_seconds);
     Ok(Duration::seconds(duration_seconds.round() as i64))
 }
 
@@ -116,33 +117,25 @@ pub async fn download_sound(
         if content_type.contains("video") {
             let new_filename = if attachment.filename.contains('.') {
                 let re = Regex::new("(.*)\\.(.*)$").unwrap();
-                println!("{}", re);
                 let (_, [name, _extension]) = re
                     .captures(&attachment.filename)
                     .unwrap_or(re.captures("joinsound.mp4").unwrap())
                     .extract();
-                println!("{} {}", name, _extension);
                 name.to_owned() + ".mp3"
             } else {
                 attachment.clone().filename + ".mp3"
             };
-            println!(
-                "filename is {}, folder is {}",
-                new_filename,
-                folder.display()
-            );
             let new_filepath = folder.join(new_filename);
-            println!("final file path: {}", new_filepath.display());
             save_video_as_audio(attachment, new_filepath.as_path()).await?;
             file = new_filepath;
         } else {
             save_attachment(attachment, file.as_path()).await?;
         }
+        info!("saved as: {}", file.as_path().display());
     }
     if let Ok(file_path) = file.canonicalize() {
         return Ok(file_path.to_str().unwrap().to_string());
     }
-    println!("here, filename was {:?}", file.canonicalize());
     Err(Box::new(std::io::Error::new(
         std::io::ErrorKind::Other,
         "Could not save sound",
