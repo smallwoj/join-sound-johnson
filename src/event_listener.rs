@@ -2,14 +2,13 @@ use serenity::async_trait;
 use serenity::prelude::Mutex;
 use songbird::{Call, EventContext as SongbirdEventContext, EventHandler as SongbirdEventHandler};
 use std::sync::Arc;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, instrument, span, warn, Level};
 
 use super::database;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
-#[instrument(name = "event-listener", skip(ctx, _framework, _user_data))]
 pub async fn event_listener(
     ctx: &serenity::client::Context,
     event: &poise::Event<'_>,
@@ -18,9 +17,11 @@ pub async fn event_listener(
 ) -> Result<(), Error> {
     match event {
         poise::Event::Ready { data_about_bot } => {
-            info!("{} is connected!", data_about_bot.user.name);
+            println!("{} is connected!", data_about_bot.user.name);
         }
         poise::Event::VoiceStateUpdate { old, new } => {
+            let span = span!(Level::INFO, "voice_state_update", event=%event.name());
+            let _enter = span.enter();
             if old.is_none() {
                 info!(
                     "{:?} joined voice channel in {:?}",

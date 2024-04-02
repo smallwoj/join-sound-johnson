@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use jsj_backend as database;
@@ -6,7 +7,14 @@ use serenity::model::gateway::{Activity, GatewayIntents};
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::KeyValue;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_sdk::{trace, Resource};
 use tracing::{error, info, instrument};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Registry;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -382,10 +390,47 @@ async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
-
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
+    let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or("".to_string());
+    let tracer = if otel_endpoint.is_empty() {
+        println!("creating tracer for stdout");
+        // Create a new OpenTelemetry trace pipeline that prints to stdout
+        let provider = TracerProvider::builder()
+            .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
+            .build();
+        provider.tracer("join-sound-johnson")
+    } else {
+        println!("creating tracer for otel");
+        let headers = HashMap::from([(
+            "Authorization".to_string(),
+            std::env::var("OTEL_AUTH_HEADER")
+                .expect("Expected env var OTEL_AUTH_HEADER with OTEL_ENDPOINT"),
+        )]);
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .http()
+                    .with_endpoint(otel_endpoint)
+                    .with_headers(headers),
+            )
+            .with_trace_config(
+                trace::config().with_resource(Resource::new(vec![KeyValue::new(
+                    "NAME",
+                    std::env::var("SERVICE_NAME").unwrap_or("join-sound-johnson".to_string()),
+                )])),
+            )
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .expect("Could not initialize otel tracer")
+    };
 
-    let subscriber = tracing_subscriber::FmtSubscriber::new();
+    // Create a tracing layer with the configured tracer
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    // Use the tracing subscriber `Registry`, or any other subscriber
+    // that impls `LookupSpan`
+    let subscriber = Registry::default().with(telemetry);
+
     if let Err(why) = tracing::subscriber::set_global_default(subscriber) {
         panic!("{}", why);
     }
