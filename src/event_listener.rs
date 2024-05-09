@@ -1,6 +1,8 @@
 use serenity::async_trait;
 use serenity::prelude::Mutex;
-use songbird::{Call, EventContext as SongbirdEventContext, EventHandler as SongbirdEventHandler};
+use songbird::{
+    tracks::Track, Call, EventContext as SongbirdEventContext, EventHandler as SongbirdEventHandler,
+};
 use std::sync::Arc;
 
 use super::database;
@@ -11,15 +13,15 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 
 pub async fn event_listener(
     ctx: &serenity::client::Context,
-    event: &poise::Event<'_>,
+    event: &poise::serenity_prelude::FullEvent,
     _framework: poise::FrameworkContext<'_, (), Error>,
     _user_data: &Data,
 ) -> Result<(), Error> {
     match event {
-        poise::Event::Ready { data_about_bot } => {
+        poise::serenity_prelude::FullEvent::Ready { data_about_bot } => {
             println!("{} is connected!", data_about_bot.user.name);
         }
-        poise::Event::VoiceStateUpdate { old, new } => {
+        poise::serenity_prelude::FullEvent::VoiceStateUpdate { old, new } => {
             if old.is_none() {
                 println!(
                     "{:?} joined voice channel in {:?}",
@@ -50,7 +52,8 @@ pub async fn event_listener(
                         };
 
                         if let Some(last_played) = last_played {
-                            if chrono::Utc::now().naive_utc().timestamp() - last_played.timestamp()
+                            if chrono::Utc::now().naive_utc().and_utc().timestamp()
+                                - last_played.and_utc().timestamp()
                                 < 30
                             {
                                 println!("Too soon to play sound.");
@@ -83,21 +86,16 @@ pub async fn event_listener(
                         }
 
                         if let Some(handler_lock) = manager.get(guild_id) {
-                            let source = match database::get_sound(new.user_id, guild_id) {
-                                Ok(joinsound) => match songbird::ffmpeg(joinsound).await {
-                                    Ok(source) => source,
-                                    Err(why) => {
-                                        println!("Err starting source: {:?}", why);
-                                        return Ok(());
-                                    }
-                                },
+                            let songbird_file = match database::get_sound(new.user_id, guild_id) {
+                                Ok(joinsound) => songbird::input::File::new(joinsound),
                                 Err(_) => {
                                     println!("no joinsound");
                                     return Ok(());
                                 }
                             };
+                            let track = Track::from(songbird_file);
                             let mut handler = handler_lock.lock().await;
-                            let track_handler = handler.play_only_source(source);
+                            let track_handler = handler.play_only(track);
 
                             if let Some(call) = manager.get(guild_id) {
                                 if let Err(why) = track_handler.add_event(

@@ -25,11 +25,8 @@ async fn save_video_as_audio(
 ) -> Result<(), Error> {
     let attachment_id = attachment.id;
     let filename = attachment.filename.as_str();
-    let temp_file_path = Path::new("/tmp").join(format!(
-        "joinsounds_{}_{}",
-        attachment_id.as_u64(),
-        filename
-    ));
+    let temp_file_path =
+        Path::new("/tmp").join(format!("joinsounds_{}_{}", attachment_id.get(), filename));
     save_attachment(attachment, temp_file_path.as_path()).await?;
 
     // touch file to make it exist
@@ -66,11 +63,8 @@ pub fn validate_attachment(attachment: serenity::Attachment) -> bool {
 pub async fn get_length(attachment: serenity::Attachment) -> Result<Duration, Error> {
     let attachment_id = attachment.id;
     let filename = attachment.filename.as_str();
-    let file_path = Path::new("/tmp").join(format!(
-        "joinsounds_{}_{}",
-        attachment_id.as_u64(),
-        filename
-    ));
+    let file_path =
+        Path::new("/tmp").join(format!("joinsounds_{}_{}", attachment_id.get(), filename));
     save_attachment(attachment, file_path.as_path()).await?;
     let output = Command::new("ffprobe")
         .arg("-v")
