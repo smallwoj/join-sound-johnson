@@ -2,7 +2,8 @@ use std::path::Path;
 
 use jsj_backend as database;
 use poise::serenity_prelude::Attachment;
-use serenity::model::gateway::{Activity, GatewayIntents};
+use serenity::all::ActivityData;
+use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
@@ -68,12 +69,20 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                     match database::update_sound(ctx.author().id, attachment, guild_id).await {
                         Ok(_) => {
                             message
-                                .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                                .edit(
+                                    ctx,
+                                    poise::CreateReply::default()
+                                        .content("✅ Successful!".to_string()),
+                                )
                                 .await
                         }
                         Err(why) => {
                             message
-                                .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                                .edit(
+                                    ctx,
+                                    poise::CreateReply::default()
+                                        .content(format!("❌ Error: {}", why)),
+                                )
                                 .await
                         }
                     }
@@ -84,12 +93,18 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                 match database::upload_sound(ctx.author().id, attachment, guild_id).await {
                     Ok(_) => {
                         message
-                            .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                            .edit(
+                                ctx,
+                                poise::CreateReply::default().content("✅ Successful!".to_string()),
+                            )
                             .await
                     }
                     Err(why) => {
                         message
-                            .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                            .edit(
+                                ctx,
+                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                            )
                             .await
                     }
                 }
@@ -153,17 +168,25 @@ async fn view(
             if let Err(why) = match database::get_sound_path(ctx.author().id, guild_id) {
                 Ok(path) => {
                     let file_path = Path::new(&path);
-                    let attachment_type = poise::serenity_prelude::AttachmentType::Path(file_path);
+                    let attachment_type =
+                        poise::serenity_prelude::CreateAttachment::path(file_path)
+                            .await
+                            .expect("Failure when creating attachment.");
                     message
-                        .edit(ctx, |f| {
-                            f.content("✅ Your joinsound is:".to_string())
-                                .attachment(attachment_type)
-                        })
+                        .edit(
+                            ctx,
+                            poise::CreateReply::default()
+                                .content("✅ Your joinsound is:".to_string())
+                                .attachment(attachment_type),
+                        )
                         .await
                 }
                 Err(why) => {
                     message
-                        .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                        .edit(
+                            ctx,
+                            poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                        )
                         .await
                 }
             } {
@@ -200,12 +223,18 @@ async fn remove(
             if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
                 Ok(_) => {
                     message
-                        .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                        .edit(
+                            ctx,
+                            poise::CreateReply::default().content("✅ Successful!".to_string()),
+                        )
                         .await
                 }
                 Err(why) => {
                     message
-                        .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                        .edit(
+                            ctx,
+                            poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                        )
                         .await
                 }
             } {
@@ -234,26 +263,40 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                     if let Err(why) = manager.remove(guild_id).await {
                         println!("Error removing voice client: {}", why);
                         if let Err(why) = message
-                            .edit(ctx, |f| f.content(format!("❌ Error: {}", why)))
+                            .edit(
+                                ctx,
+                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                            )
                             .await
                         {
                             println!("Error sending message: {}", why);
                         }
                     } else if let Err(why) = message
-                        .edit(ctx, |f| f.content("✅ Successful!".to_string()))
+                        .edit(
+                            ctx,
+                            poise::CreateReply::default().content("✅ Successful!".to_string()),
+                        )
                         .await
                     {
                         println!("Error sending message: {}", why);
                     }
                 } else if let Err(why) = message
-                    .edit(ctx, |f| f.content("❌ Not in a voice channel.".to_string()))
+                    .edit(
+                        ctx,
+                        poise::CreateReply::default()
+                            .content("❌ Not in a voice channel.".to_string()),
+                    )
                     .await
                 {
                     println!("Error sending message: {}", why);
                 }
             } else {
                 message
-                    .edit(ctx, |f| f.content("❌ Not in a voice channel.".to_string()))
+                    .edit(
+                        ctx,
+                        poise::CreateReply::default()
+                            .content("❌ Not in a voice channel.".to_string()),
+                    )
                     .await?;
             }
         }
@@ -268,14 +311,15 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 async fn support(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
     ctx.send(
-        |f| {
-            f.embed(|f| {
-                f.title("Join Sound Johnson Support Server").description(
-                    "You can join the support server at https://discord.gg/KZA8TFMwPN.",
-                )
-            })
-            .ephemeral(true)
-        }, // this one only applies in application commands though
+        poise::CreateReply::default()
+            .embed(
+                poise::serenity_prelude::CreateEmbed::new()
+                    .title("Join Sound Johnson Support Server")
+                    .description(
+                        "You can join the support server at https://discord.gg/KZA8TFMwPN.",
+                    ),
+            )
+            .ephemeral(true),
     )
     .await?;
     Ok(())
@@ -285,8 +329,8 @@ async fn support(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, track_edits)]
 async fn tos(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    ctx.send(|f| f
-        .embed(|f| f
+    ctx.send(poise::CreateReply::default()
+        .embed(poise::serenity_prelude::CreateEmbed::new()
             .title("Join Sound Johnson Terms of Service")
             .description("You can find the Terms of Service at https://join-sound-johnson.netlify.app/#/terms-of-service.")
         )
@@ -299,8 +343,8 @@ async fn tos(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, track_edits)]
 async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
     ctx.defer_ephemeral().await?;
-    ctx.send(|f| f
-        .embed(|f| f
+    ctx.send(poise::CreateReply::default()
+        .embed(poise::serenity_prelude::CreateEmbed::new()
             .title("Join Sound Johnson Privacy Policy")
             .description("You can find the Privacy Policy at https://join-sound-johnson.netlify.app/#/privacy-policy.")
         )
@@ -315,12 +359,11 @@ async fn main() {
 
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
 
-    poise::Framework::builder()
-        .token(token)
+    let framework = poise::Framework::builder()
         .setup(move |ctx, _ready, framework| {
             Box::pin(async move {
-                let activity = Activity::watching("/set an attachment!");
-                ctx.set_presence(Some(activity), OnlineStatus::Online).await;
+                let activity = ActivityData::watching("/set an attachment!");
+                ctx.set_presence(Some(activity), OnlineStatus::Online);
                 let register_method = match std::env::var("JSJ_REGISTER_METHOD") {
                     Ok(method) => match method.as_str() {
                         "register" => Some("register"),
@@ -346,11 +389,7 @@ async fn main() {
                     }
                     (Some("delete"), Some("global")) => {
                         println!("removing all global commands");
-                        poise::serenity_prelude::Command::set_global_application_commands(
-                            ctx,
-                            |b| b,
-                        )
-                        .await?;
+                        poise::serenity_prelude::Command::set_global_commands(ctx, vec![]).await?;
                         std::process::exit(0);
                     }
                     (Some("register"), Some("guild")) => {
@@ -364,7 +403,7 @@ async fn main() {
                         poise::builtins::register_in_guild(
                             ctx,
                             &framework.options().commands,
-                            poise::serenity_prelude::GuildId(guild_id),
+                            poise::serenity_prelude::GuildId::new(guild_id),
                         )
                         .await?;
                         std::process::exit(0);
@@ -377,8 +416,8 @@ async fn main() {
                             .parse::<u64>()
                             .unwrap();
                         println!("deleting all commands locally in guild {}", guild_id);
-                        poise::serenity_prelude::GuildId(guild_id)
-                            .set_application_commands(ctx, |b| b)
+                        poise::serenity_prelude::GuildId::new(guild_id)
+                            .set_commands(ctx, vec![])
                             .await?;
                         std::process::exit(0);
                     }
@@ -388,7 +427,6 @@ async fn main() {
                 Ok(())
             })
         })
-        .intents(GatewayIntents::non_privileged() | GatewayIntents::GUILD_VOICE_STATES)
         .options(poise::FrameworkOptions {
             prefix_options: poise::PrefixFrameworkOptions {
                 prefix: Some("j!".into()),
@@ -413,9 +451,12 @@ async fn main() {
             },
             ..Default::default()
         })
-        .client_settings(|c| c.register_songbird())
         .initialize_owners(true)
-        .run()
-        .await
-        .unwrap();
+        .build();
+    let intents = GatewayIntents::non_privileged() | GatewayIntents::GUILD_VOICE_STATES;
+    let client = poise::serenity_prelude::ClientBuilder::new(token, intents)
+        .framework(framework)
+        .register_songbird()
+        .await;
+    client.unwrap().start().await.unwrap();
 }
