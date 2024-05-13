@@ -7,7 +7,7 @@ edition = "2018"
 
 [dependencies]
 diesel = { version = "2.1.3", features = ["mysql", "chrono"] }
-chrono = "0.4"
+chrono = "0.4.37"
 dotenv = "0.15.0"
 tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
 tracing = "0.1.40"
@@ -21,15 +21,18 @@ opentelemetry-otlp = { version = "0.15.0", features = [
   "http-proto",
   "reqwest-client",
 ] }
-poise = { version = "0.5.7", features = ["collector", "cache"] }
-songbird = "0.3.2"
+poise = { version = "0.6.1", features = ["collector", "cache"] }
+songbird = "0.4.1"
 regex = "1.10.1"
 
 [dependencies.serenity]
 default-features = false
 features = ["voice", "client", "gateway", "model", "cache"]
-version = "0.11.6"
+version = "0.12.1"
 
+[dependencies.symphonia]
+version = "0.5.4"
+features = ["all"]
 
 [lib]
 name = "jsj_backend"
