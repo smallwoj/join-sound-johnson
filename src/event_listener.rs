@@ -22,7 +22,7 @@ pub async fn event_listener(
             println!("{} is connected!", data_about_bot.user.name);
         }
         poise::serenity_prelude::FullEvent::VoiceStateUpdate { old, new } => {
-            let span = span!(Level::INFO, "voice_state_update", event=%event.name());
+            let span = span!(Level::INFO, "voice_state_update", event=%event.snake_case_name());
             let _enter = span.enter();
             if old.is_none() {
                 info!(
