@@ -332,7 +332,7 @@ async fn tos(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(poise::CreateReply::default()
         .embed(poise::serenity_prelude::CreateEmbed::new()
             .title("Join Sound Johnson Terms of Service")
-            .description("You can find the Terms of Service at https://join-sound-johnson.netlify.app/#/terms-of-service.")
+            .description("You can find the Terms of Service at https://join-sound-johnson.toastlord.com/terms-of-service.")
         )
         .ephemeral(true)
     ).await?;
@@ -346,7 +346,7 @@ async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
     ctx.send(poise::CreateReply::default()
         .embed(poise::serenity_prelude::CreateEmbed::new()
             .title("Join Sound Johnson Privacy Policy")
-            .description("You can find the Privacy Policy at https://join-sound-johnson.netlify.app/#/privacy-policy.")
+            .description("You can find the Privacy Policy at https://join-sound-johnson.toastlord.com/privacy-policy.")
         )
         .ephemeral(true)
     ).await?;
