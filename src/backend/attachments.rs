@@ -14,6 +14,7 @@ async fn save_attachment(attachment: serenity::Attachment, file_path: &Path) -> 
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(file_path)
         .await?;
     f.write_all(&bytes).await?;
@@ -34,6 +35,7 @@ async fn save_video_as_audio(
     OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(file_path)
         .await?;
     let mut cmd = Command::new("ffmpeg");
