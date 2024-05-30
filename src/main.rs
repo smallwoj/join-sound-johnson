@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use jsj_backend as database;
@@ -7,6 +8,15 @@ use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry::KeyValue;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_sdk::{trace, Resource};
+use tracing::{error, info, instrument};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Registry;
+
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
@@ -15,7 +25,15 @@ mod event_listener;
 
 /// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="ping",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Called ping command");
     ctx.say("Pong!").await?;
 
     Ok(())
@@ -23,12 +41,20 @@ pub async fn ping(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Show this help menu.
 #[poise::command(prefix_command, track_edits, slash_command)]
+#[instrument(
+    name="help",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn help(
     ctx: Context<'_>,
     #[description = "Specific command to show help about"]
     #[autocomplete = "poise::builtins::autocomplete_command"]
     command: Option<String>,
 ) -> Result<(), Error> {
+    info!("Called help command");
     poise::builtins::help(
         ctx,
         command.as_deref(),
@@ -43,13 +69,17 @@ Set a sound to play everytime you join a voice channel!",
     Ok(())
 }
 
+#[instrument(
+    name="set_sound",
+    skip(ctx, attachment),
+    fields(
+        user_id=%ctx.author(),
+        attachment_id=%attachment.id,
+        file_name=%attachment.filename,
+    )
+)]
 async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error> {
-    println!(
-        "{:?} trying to set {} sound {:?}",
-        ctx.author(),
-        if local { "local" } else { "global" },
-        attachment
-    );
+    info!("Trying to set sound");
 
     match ctx.say("🔃 Downloading...").await {
         Ok(message) => {
@@ -87,7 +117,7 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                         }
                     }
                 {
-                    println!("Error sending message: {}", why);
+                    error!("Error sending message: {}", why);
                 }
             } else if let Err(why) =
                 match database::upload_sound(ctx.author().id, attachment, guild_id).await {
@@ -109,10 +139,10 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                     }
                 }
             {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     }
 
     Ok(())
@@ -145,12 +175,20 @@ async fn set_local(
 
 /// View what your joinsound currently is.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="view",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn view(
     ctx: Context<'_>,
     #[description = "If true, the joinsound local to this server will be shown."]
     #[flag]
     local: bool,
 ) -> Result<(), Error> {
+    info!("Viewing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Fetching...").await {
         Ok(message) => {
@@ -190,22 +228,30 @@ async fn view(
                         .await
                 }
             } {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     }
     Ok(())
 }
 
 /// Remove a joinsound.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn remove(
     ctx: Context<'_>,
     #[description = "If true, the joinsound local to this server will be removed."]
     #[flag]
     local: bool,
 ) -> Result<(), Error> {
+    info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
         Ok(message) => {
@@ -238,10 +284,10 @@ async fn remove(
                         .await
                 }
             } {
-                println!("Error sending message: {}", why);
+                error!("Error sending message: {}", why);
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     };
 
     Ok(())
@@ -249,7 +295,15 @@ async fn remove(
 
 /// Force the bot to leave a voice channel.
 #[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="leave",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn leave(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Leaving voice channel");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Leaving...").await {
         Ok(message) => {
@@ -261,7 +315,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                 let has_handler = manager.get(guild_id).is_some();
                 if has_handler {
                     if let Err(why) = manager.remove(guild_id).await {
-                        println!("Error removing voice client: {}", why);
+                        error!("Error removing voice client: {}", why);
                         if let Err(why) = message
                             .edit(
                                 ctx,
@@ -269,7 +323,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                             )
                             .await
                         {
-                            println!("Error sending message: {}", why);
+                            error!("Error sending message: {}", why);
                         }
                     } else if let Err(why) = message
                         .edit(
@@ -278,7 +332,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                         )
                         .await
                     {
-                        println!("Error sending message: {}", why);
+                        error!("Error sending message: {}", why);
                     }
                 } else if let Err(why) = message
                     .edit(
@@ -288,7 +342,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                     )
                     .await
                 {
-                    println!("Error sending message: {}", why);
+                    error!("Error sending message: {}", why);
                 }
             } else {
                 message
@@ -300,7 +354,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                     .await?;
             }
         }
-        Err(why) => println!("Error sending message: {}", why),
+        Err(why) => error!("Error sending message: {}", why),
     };
 
     Ok(())
@@ -308,7 +362,15 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the support server.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="support",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn support(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending support server link");
     ctx.defer_ephemeral().await?;
     ctx.send(
         poise::CreateReply::default()
@@ -327,7 +389,15 @@ async fn support(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the terms of service.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="tos",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn tos(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending tos");
     ctx.defer_ephemeral().await?;
     ctx.send(poise::CreateReply::default()
         .embed(poise::serenity_prelude::CreateEmbed::new()
@@ -341,7 +411,15 @@ async fn tos(ctx: Context<'_>) -> Result<(), Error> {
 
 /// Gives a link to the privacy policy.
 #[poise::command(slash_command, track_edits)]
+#[instrument(
+    name="privacy-policy",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
 async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
+    info!("Sending privacy policy");
     ctx.defer_ephemeral().await?;
     ctx.send(poise::CreateReply::default()
         .embed(poise::serenity_prelude::CreateEmbed::new()
@@ -356,8 +434,50 @@ async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
-
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
+    let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or("".to_string());
+    let tracer = if otel_endpoint.is_empty() {
+        println!("creating tracer for stdout");
+        // Create a new OpenTelemetry trace pipeline that prints to stdout
+        let provider = TracerProvider::builder()
+            .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
+            .build();
+        provider.tracer("join-sound-johnson")
+    } else {
+        println!("creating tracer for otel");
+        let headers = HashMap::from([(
+            "Authorization".to_string(),
+            std::env::var("OTEL_AUTH_HEADER")
+                .expect("Expected env var OTEL_AUTH_HEADER with OTEL_ENDPOINT"),
+        )]);
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(
+                opentelemetry_otlp::new_exporter()
+                    .http()
+                    .with_endpoint(otel_endpoint)
+                    .with_headers(headers),
+            )
+            .with_trace_config(
+                trace::config().with_resource(Resource::new(vec![KeyValue::new(
+                    "NAME",
+                    std::env::var("SERVICE_NAME").unwrap_or("join-sound-johnson".to_string()),
+                )])),
+            )
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .expect("Could not initialize otel tracer")
+    };
+
+    // Create a tracing layer with the configured tracer
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    // Use the tracing subscriber `Registry`, or any other subscriber
+    // that impls `LookupSpan`
+    let subscriber = Registry::default().with(telemetry);
+
+    if let Err(why) = tracing::subscriber::set_global_default(subscriber) {
+        panic!("{}", why);
+    }
 
     let framework = poise::Framework::builder()
         .setup(move |ctx, _ready, framework| {

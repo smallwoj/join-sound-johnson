@@ -4,12 +4,12 @@ use songbird::{
     tracks::Track, Call, EventContext as SongbirdEventContext, EventHandler as SongbirdEventHandler,
 };
 use std::sync::Arc;
+use tracing::{error, info, instrument, span, warn, Level};
 
 use super::database;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
-//type Context<'a> = poise::Context<'a, Data, Error>;
 
 pub async fn event_listener(
     ctx: &serenity::client::Context,
@@ -22,8 +22,10 @@ pub async fn event_listener(
             println!("{} is connected!", data_about_bot.user.name);
         }
         poise::serenity_prelude::FullEvent::VoiceStateUpdate { old, new } => {
+            let span = span!(Level::INFO, "voice_state_update", event=%event.snake_case_name());
+            let _enter = span.enter();
             if old.is_none() {
-                println!(
+                info!(
                     "{:?} joined voice channel in {:?}",
                     new.user_id, new.guild_id
                 );
@@ -56,7 +58,7 @@ pub async fn event_listener(
                                 - last_played.and_utc().timestamp()
                                 < 30
                             {
-                                println!("Too soon to play sound.");
+                                warn!("Too soon to play sound.");
                                 return Ok(());
                             }
                         }
@@ -80,7 +82,7 @@ pub async fn event_listener(
                             if let Some(voice_channel) = new.channel_id {
                                 let _handler = manager.join(guild_id, voice_channel).await;
                             } else {
-                                println!("could not find voice channel");
+                                error!("could not find voice channel");
                                 return Ok(());
                             }
                         }
@@ -89,7 +91,7 @@ pub async fn event_listener(
                             let songbird_file = match database::get_sound(new.user_id, guild_id) {
                                 Ok(joinsound) => songbird::input::File::new(joinsound),
                                 Err(_) => {
-                                    println!("no joinsound");
+                                    error!("no joinsound");
                                     return Ok(());
                                 }
                             };
@@ -104,7 +106,7 @@ pub async fn event_listener(
                                     ),
                                     SongEndNotifier { call },
                                 ) {
-                                    println!("Cannot add event: {}", why);
+                                    error!("Cannot add event: {}", why);
                                 }
                             }
                         };
@@ -118,18 +120,19 @@ pub async fn event_listener(
     Ok(())
 }
 
+#[derive(Debug)]
 struct SongEndNotifier {
     call: Arc<Mutex<Call>>,
 }
 
 #[async_trait]
 impl SongbirdEventHandler for SongEndNotifier {
+    #[instrument(name = "songbird-end-notifier", skip(_ctx))]
     async fn act(&self, _ctx: &SongbirdEventContext<'_>) -> Option<songbird::events::Event> {
-        //tokio::time::sleep(Duration::from_secs(10)).await;
-        println!("leaving now");
+        info!("leaving now");
         let mut handler = (*self.call).lock().await;
         if let Err(why) = handler.leave().await {
-            println!("Error leaving voice channel: {:?}", why);
+            error!("Error leaving voice channel: {:?}", why);
         }
 
         return None;
