@@ -473,7 +473,9 @@ async fn main() {
 
     // Use the tracing subscriber `Registry`, or any other subscriber
     // that impls `LookupSpan`
-    let subscriber = Registry::default().with(telemetry);
+    let subscriber = Registry::default()
+        .with(telemetry)
+        .with(tracing_subscriber::EnvFilter::from_default_env());
 
     if let Err(why) = tracing::subscriber::set_global_default(subscriber) {
         panic!("{}", why);
