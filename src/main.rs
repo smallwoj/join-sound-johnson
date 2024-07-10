@@ -434,6 +434,9 @@ async fn privacy_policy(ctx: Context<'_>) -> Result<(), Error> {
 #[tokio::main]
 async fn main() {
     dotenv::dotenv().ok();
+    rustls::crypto::aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install rustls crypto provider");
     let token = std::env::var("DISCORD_BOT_TOKEN").expect("Expected a token in the environment");
     let otel_endpoint = std::env::var("OTEL_ENDPOINT").unwrap_or("".to_string());
     let tracer = if otel_endpoint.is_empty() {
