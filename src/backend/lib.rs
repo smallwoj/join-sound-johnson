@@ -297,10 +297,10 @@ pub fn remove_sound(
             if will_remove_folder {
                 let joinsound_path_str = joinsound_path_string.as_str();
                 if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir(joinsound_folder).expect("Error removing joinsound folder");
+                    fs::remove_dir_all(joinsound_folder).expect("Error removing joinsound folder");
                     if !has_any_sound(discord_id) {
                         if let Some(user_folder) = joinsound_folder.parent() {
-                            fs::remove_dir(user_folder).expect("Error removing user folder");
+                            fs::remove_dir_all(user_folder).expect("Error removing user folder");
                         }
                     }
                 }
@@ -337,7 +337,7 @@ pub fn remove_sound(
             if will_remove_folder && !has_any_sound(discord_id) {
                 let joinsound_path_str = joinsound_path_string.as_str();
                 if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir(joinsound_folder).expect("Error removing user folder");
+                    fs::remove_dir_all(joinsound_folder).expect("Error removing user folder");
                 }
             }
             Ok(())
