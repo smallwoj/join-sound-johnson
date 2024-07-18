@@ -226,7 +226,8 @@ pub async fn update_sound(
                     remove_sound(user_id, guild_id)?;
                 }
                 let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
-                database::update_joinsound(user_id, guild_id, file_path);
+                // Database entry is deleted at this point, create the new sound
+                database::create_new_joinsound(user_id, guild_id, file_path);
                 Ok(())
             }
         }
