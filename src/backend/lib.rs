@@ -13,6 +13,7 @@ use poise::serenity_prelude as serenity;
 
 pub mod attachments;
 pub mod database;
+pub mod file;
 pub mod models;
 pub mod schema;
 
