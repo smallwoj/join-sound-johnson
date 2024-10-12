@@ -13,7 +13,9 @@ fn is_s3_mode() -> bool {
 }
 
 async fn get_bucket() -> Result<Bucket, S3Error> {
-    let bucket_name = "join-sound-johnson";
+    let bucket_name = env::var("S3_BUCKET_NAME")
+        .unwrap_or(String::from("join-sound-johnson"))
+        .to_owned();
     let region = Region::Custom {
         region: env::var("S3_REGION")
             .unwrap_or(String::from("us-east-2"))
@@ -25,11 +27,11 @@ async fn get_bucket() -> Result<Bucket, S3Error> {
     let credentials = Credentials::default()?;
 
     let mut bucket =
-        Bucket::new(bucket_name, region.clone(), credentials.clone())?.with_path_style();
+        Bucket::new(&bucket_name, region.clone(), credentials.clone())?.with_path_style();
 
     if !bucket.exists().await? {
         bucket = Bucket::create_with_path_style(
-            bucket_name,
+            &bucket_name,
             region,
             credentials,
             BucketConfiguration::default(),
@@ -63,7 +65,11 @@ async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
         if let Ok(bucket) = get_bucket().await {
             let mut buf = vec![];
             let _ = file.read_to_end(&mut buf);
-            if let Ok(_) = bucket.put_object(path.to_str().unwrap_or(""), &buf).await {
+            if bucket
+                .put_object(path.to_str().unwrap_or(""), &buf)
+                .await
+                .is_ok()
+            {
                 Ok(())
             } else {
                 Err(Error::from(ErrorKind::NotFound))
@@ -83,7 +89,11 @@ async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
 async fn delete_file(path: PathBuf) -> Result<(), Error> {
     if is_s3_mode() {
         if let Ok(bucket) = get_bucket().await {
-            if let Ok(_) = bucket.delete_object(path.to_str().unwrap_or("")).await {
+            if bucket
+                .delete_object(path.to_str().unwrap_or(""))
+                .await
+                .is_ok()
+            {
                 Ok(())
             } else {
                 Err(Error::from(ErrorKind::NotFound))
