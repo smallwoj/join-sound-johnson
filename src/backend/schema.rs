@@ -4,7 +4,6 @@ table! {
         discord_id -> Nullable<Varchar>,
         guild_id -> Nullable<Varchar>,
         file_path -> Nullable<Varchar>,
-        video_url -> Nullable<Varchar>,
         last_played -> Nullable<Timestamp>,
     }
 }
