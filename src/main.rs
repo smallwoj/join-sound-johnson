@@ -266,7 +266,7 @@ async fn remove(
                 None => None,
             };
 
-            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
+            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id).await {
                 Ok(_) => {
                     message
                         .edit(

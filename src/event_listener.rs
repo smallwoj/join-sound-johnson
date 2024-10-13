@@ -88,13 +88,14 @@ pub async fn event_listener(
                         }
 
                         if let Some(handler_lock) = manager.get(guild_id) {
-                            let songbird_file = match database::get_sound(new.user_id, guild_id) {
-                                Ok(joinsound) => songbird::input::File::new(joinsound),
-                                Err(_) => {
-                                    error!("no joinsound");
-                                    return Ok(());
-                                }
-                            };
+                            let songbird_file =
+                                match database::get_sound(new.user_id, guild_id).await {
+                                    Ok(joinsound) => songbird::input::File::new(joinsound),
+                                    Err(_) => {
+                                        error!("no joinsound");
+                                        return Ok(());
+                                    }
+                                };
                             let track = Track::from(songbird_file);
                             let mut handler = handler_lock.lock().await;
                             let track_handler = handler.play_only(track);

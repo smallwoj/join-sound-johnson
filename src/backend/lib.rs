@@ -5,8 +5,10 @@ use attachments::validate_attachment;
 use chrono::Duration;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use std::fs;
+use std::env::temp_dir;
 use std::path::{Path, PathBuf};
+use tokio::fs;
+use tokio::io::AsyncReadExt;
 use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
@@ -55,7 +57,10 @@ pub fn has_any_sound(in_discord_id: serenity::UserId) -> bool {
     res.unwrap_or(false)
 }
 
-pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<PathBuf, String> {
+pub async fn get_sound(
+    user_id: serenity::UserId,
+    guild: serenity::GuildId,
+) -> Result<PathBuf, String> {
     let connection = &mut connect();
 
     // Check local sound first
@@ -69,8 +74,19 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
             if let Err(why) = set_last_played(user_id, Some(guild)) {
                 error!("Error setting last played: {}", why);
             }
-
-            return Ok(Path::new(&joinsound_path).to_path_buf());
+            let mut joinsound_file = file::open_file(joinsound_path.clone().into())
+                .await
+                .expect("Could not get join sound file");
+            let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
+            let mut buf = vec![];
+            let _ = joinsound_file
+                .read_to_end(&mut buf)
+                .await
+                .expect("Could not read joinsound file");
+            fs::write(temp_file_path.clone(), &buf)
+                .await
+                .expect("Could not write to temporary file");
+            Ok(temp_file_path)
         } else {
             Err("File path is null".to_string())
         }
@@ -224,7 +240,7 @@ pub async fn update_sound(
             } else {
                 // remove the sound first
                 if has_sound(user_id, guild_id) {
-                    remove_sound(user_id, guild_id)?;
+                    remove_sound(user_id, guild_id).await?;
                 }
                 let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
                 // Database entry is deleted at this point, create the new sound
@@ -261,7 +277,7 @@ pub fn set_last_played(
     Ok(())
 }
 
-pub fn remove_sound(
+pub async fn remove_sound(
     discord_id: serenity::UserId,
     guild_id: Option<serenity::GuildId>,
 ) -> Result<(), Error> {
@@ -269,8 +285,6 @@ pub fn remove_sound(
         if let Some(guild) = guild_id {
             let connection = &mut connect();
             let guild_str = guild.to_string();
-            let will_remove_folder;
-            let joinsound_path_string;
 
             // get file path to remove it
             if let Ok(Some(joinsound_path)) = schema::joinsounds::table
@@ -279,10 +293,7 @@ pub fn remove_sound(
                 .select(schema::joinsounds::file_path)
                 .first::<Option<String>>(connection)
             {
-                joinsound_path_string = joinsound_path.clone();
-                let joinsound_path_str = joinsound_path.as_str();
-                fs::remove_file(joinsound_path_str).expect("Error removing joinsound file");
-                will_remove_folder = true;
+                file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -296,22 +307,9 @@ pub fn remove_sound(
                 .execute(connection)
                 .expect("Error deleting joinsound");
 
-            if will_remove_folder {
-                let joinsound_path_str = joinsound_path_string.as_str();
-                if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir_all(joinsound_folder).expect("Error removing joinsound folder");
-                    if !has_any_sound(discord_id) {
-                        if let Some(user_folder) = joinsound_folder.parent() {
-                            fs::remove_dir_all(user_folder).expect("Error removing user folder");
-                        }
-                    }
-                }
-            }
             Ok(())
         } else {
             let connection = &mut connect();
-            let will_remove_folder;
-            let joinsound_path_string;
             // get file path to remove it
             if let Ok(Some(joinsound_path)) = schema::joinsounds::table
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
@@ -319,10 +317,7 @@ pub fn remove_sound(
                 .select(schema::joinsounds::file_path)
                 .first::<Option<String>>(connection)
             {
-                joinsound_path_string = joinsound_path.clone();
-                let joinsound_path_str = joinsound_path.as_str();
-                fs::remove_file(joinsound_path_str).expect("Error removing joinsound file");
-                will_remove_folder = true;
+                file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -336,12 +331,6 @@ pub fn remove_sound(
                 .execute(connection)
                 .expect("Error deleting joinsound");
 
-            if will_remove_folder && !has_any_sound(discord_id) {
-                let joinsound_path_str = joinsound_path_string.as_str();
-                if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir_all(joinsound_folder).expect("Error removing user folder");
-                }
-            }
             Ok(())
         }
     } else {

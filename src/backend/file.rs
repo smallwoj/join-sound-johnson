@@ -1,12 +1,14 @@
 use std::{
     env,
-    fs::File,
-    io::{Error, ErrorKind, Read, Write},
+    io::{Error, ErrorKind},
     path::PathBuf,
 };
 
 use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
-use tokio::fs::remove_file;
+use tokio::{
+    fs::{remove_file, File},
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 fn is_s3_mode() -> bool {
     env::var("S3_ENDPOINT").is_ok()
@@ -42,12 +44,12 @@ async fn get_bucket() -> Result<Bucket, S3Error> {
     Ok(*bucket)
 }
 
-async fn open_file(path: PathBuf) -> Result<File, Error> {
+pub async fn open_file(path: PathBuf) -> Result<File, Error> {
     if is_s3_mode() {
         if let Ok(bucket) = get_bucket().await {
             if let Ok(response) = bucket.get_object(path.to_str().unwrap_or("")).await {
-                let mut file = File::create(PathBuf::from("/tmp").join(path))?;
-                file.write_all(response.bytes())?;
+                let mut file = File::create(PathBuf::from("/tmp").join(path)).await?;
+                file.write_all(response.bytes()).await?;
                 Ok(file)
             } else {
                 Err(Error::from(ErrorKind::NotFound))
@@ -56,15 +58,15 @@ async fn open_file(path: PathBuf) -> Result<File, Error> {
             Err(Error::from(ErrorKind::NotFound))
         }
     } else {
-        File::open(path)
+        File::open(path).await
     }
 }
 
-async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
+pub async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
     if is_s3_mode() {
         if let Ok(bucket) = get_bucket().await {
             let mut buf = vec![];
-            let _ = file.read_to_end(&mut buf);
+            let _ = file.read_to_end(&mut buf).await;
             if bucket
                 .put_object(path.to_str().unwrap_or(""), &buf)
                 .await
@@ -78,15 +80,15 @@ async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
             Err(Error::from(ErrorKind::NotFound))
         }
     } else {
-        let mut new_file = File::create(path)?;
+        let mut new_file = File::create(path).await?;
         let mut buf = vec![];
-        let _ = new_file.read_to_end(&mut buf);
-        new_file.write_all(&buf)?;
+        let _ = new_file.read_to_end(&mut buf).await?;
+        new_file.write_all(&buf).await?;
         Ok(())
     }
 }
 
-async fn delete_file(path: PathBuf) -> Result<(), Error> {
+pub async fn delete_file(path: PathBuf) -> Result<(), Error> {
     if is_s3_mode() {
         if let Ok(bucket) = get_bucket().await {
             if bucket
