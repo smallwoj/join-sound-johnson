@@ -11,6 +11,6 @@ diesel::table! {
         file_path -> Nullable<Varchar>,
         #[max_length = 255]
         video_url -> Nullable<Varchar>,
-        last_played -> Timestamp,
+        last_played -> Nullable<Timestamp>,
     }
 }
