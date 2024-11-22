@@ -3,7 +3,10 @@ use std::path::Path;
 
 use jsj_backend as database;
 use poise::serenity_prelude::Attachment;
-use serenity::all::ActivityData;
+use serenity::all::{
+    colours, ActivityData, ButtonStyle, ComponentInteractionCollector, CreateActionRow,
+    CreateButton, CreateInteractionResponse, ReactionType,
+};
 use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
@@ -316,6 +319,55 @@ async fn remove_local(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+/// Removes all user data and join sounds from the bot.
+#[poise::command(slash_command)]
+#[instrument(
+    name="purge",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn purge(ctx: Context<'_>) -> Result<(), Error> {
+    let interaction_uuid = ctx.id();
+    let components = vec![CreateActionRow::Buttons(vec![CreateButton::new(format!(
+        "{interaction_uuid}"
+    ))
+    .style(ButtonStyle::Danger)
+    .emoji(ReactionType::from('🗑'))
+    .label("Delete all data")])];
+
+    ctx.send(poise::CreateReply::default()
+        .embed(poise::serenity_prelude::CreateEmbed::new()
+            .title("Purge Data")
+            .description("Are you sure you'd like to purge or delete all data? This is not reversible.")
+            .colour(colours::css::DANGER)
+        )
+        .components(components)
+        .ephemeral(true)
+    ).await?;
+
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .author_id(ctx.author().id)
+        .channel_id(ctx.channel_id())
+        .timeout(std::time::Duration::from_secs(120))
+        .filter(move |mci| mci.data.custom_id == interaction_uuid.to_string())
+        .await
+    {
+        ctx.send(
+            poise::CreateReply::default()
+                .content("Data has been deleted.".to_string())
+                .ephemeral(true),
+        )
+        .await?;
+
+        mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
+            .await?;
+    }
+
+    Ok(())
+}
+
 /// Force the bot to leave a voice channel.
 #[poise::command(prefix_command, slash_command, track_edits)]
 #[instrument(
@@ -588,6 +640,7 @@ async fn main() {
                 view(),
                 remove(),
                 remove_local(),
+                purge(),
                 leave(),
                 support(),
                 tos(),
