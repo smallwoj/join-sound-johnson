@@ -7,7 +7,7 @@ use diesel::dsl::{exists, select};
 use diesel::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use poise::serenity_prelude as serenity;
 
@@ -149,14 +149,16 @@ pub fn get_last_played(
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(connection).unwrap_or_default()
+            .first::<Option<chrono::NaiveDateTime>>(connection)
+            .unwrap_or_default()
     } else {
         // Check global sound
         schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(connection).unwrap_or_default()
+            .first::<Option<chrono::NaiveDateTime>>(connection)
+            .unwrap_or_default()
     }
 }
 
@@ -339,4 +341,20 @@ pub fn remove_sound(
             "No sound to remove!",
         )))
     }
+}
+
+pub fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
+    let connection = &mut connect();
+
+    diesel::delete(schema::joinsounds::table)
+        .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
+        .execute(connection)
+        .expect("Error deleting joinsound");
+
+    let path = Path::new(".").join("media").join(discord_id.to_string());
+    if let Err(why) = fs::remove_dir_all(path) {
+        warn!("Error when deleting: {}", why);
+    }
+
+    Ok(())
 }

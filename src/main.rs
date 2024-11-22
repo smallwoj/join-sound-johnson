@@ -3,7 +3,10 @@ use std::path::Path;
 
 use jsj_backend as database;
 use poise::serenity_prelude::Attachment;
-use serenity::all::ActivityData;
+use serenity::all::{
+    colours, ActivityData, ButtonStyle, ComponentInteractionCollector, CreateActionRow,
+    CreateButton, CreateInteractionResponse, ReactionType,
+};
 use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
@@ -236,21 +239,7 @@ async fn view(
     Ok(())
 }
 
-/// Remove a joinsound.
-#[poise::command(prefix_command, slash_command, track_edits)]
-#[instrument(
-    name="remove",
-    skip(ctx),
-    fields(
-        user_id=%ctx.author(),
-    )
-)]
-async fn remove(
-    ctx: Context<'_>,
-    #[description = "If true, the joinsound local to this server will be removed."]
-    #[flag]
-    local: bool,
-) -> Result<(), Error> {
+async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
     info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
@@ -268,10 +257,14 @@ async fn remove(
 
             if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
                 Ok(_) => {
+                    let remove_context = if local { "local" } else { "global" };
                     message
                         .edit(
                             ctx,
-                            poise::CreateReply::default().content("✅ Successful!".to_string()),
+                            poise::CreateReply::default().content(
+                                format!("✅ Successfully removed {} joinsound!", remove_context)
+                                    .to_string(),
+                            ),
                         )
                         .await
                 }
@@ -289,6 +282,97 @@ async fn remove(
         }
         Err(why) => error!("Error sending message: {}", why),
     };
+
+    Ok(())
+}
+
+/// Remove a joinsound.
+#[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn remove(
+    ctx: Context<'_>,
+    #[description = "If true, the joinsound local to this server will be removed."]
+    #[flag]
+    local: bool,
+) -> Result<(), Error> {
+    _remove(ctx, local).await?;
+    Ok(())
+}
+
+/// Remove the joinsound local to this server.
+#[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove_local",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn remove_local(ctx: Context<'_>) -> Result<(), Error> {
+    _remove(ctx, true).await?;
+    Ok(())
+}
+
+/// Removes all user data and join sounds from the bot.
+#[poise::command(slash_command)]
+#[instrument(
+    name="purge",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn purge(ctx: Context<'_>) -> Result<(), Error> {
+    let interaction_uuid = ctx.id();
+    let components = vec![CreateActionRow::Buttons(vec![CreateButton::new(format!(
+        "{interaction_uuid}"
+    ))
+    .style(ButtonStyle::Danger)
+    .emoji(ReactionType::from('🗑'))
+    .label("Delete all data")])];
+
+    ctx.send(poise::CreateReply::default()
+        .embed(poise::serenity_prelude::CreateEmbed::new()
+            .title("Purge Data")
+            .description("Are you sure you'd like to purge or delete all data? This is not reversible.")
+            .colour(colours::css::DANGER)
+        )
+        .components(components)
+        .ephemeral(true)
+    ).await?;
+
+    while let Some(mci) = ComponentInteractionCollector::new(ctx)
+        .author_id(ctx.author().id)
+        .channel_id(ctx.channel_id())
+        .timeout(std::time::Duration::from_secs(120))
+        .filter(move |mci| mci.data.custom_id == interaction_uuid.to_string())
+        .await
+    {
+        if let Err(why) = database::remove_all_sounds(ctx.author().id) {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("Error when deleting data: {why}."))
+                    .ephemeral(true),
+            )
+            .await?;
+        } else {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("Data has been deleted.".to_string())
+                    .ephemeral(true),
+            )
+            .await?;
+        }
+
+        mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
+            .await?;
+    }
 
     Ok(())
 }
@@ -564,6 +648,8 @@ async fn main() {
                 set_local(),
                 view(),
                 remove(),
+                remove_local(),
+                purge(),
                 leave(),
                 support(),
                 tos(),
