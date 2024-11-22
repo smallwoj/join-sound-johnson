@@ -354,12 +354,21 @@ async fn purge(ctx: Context<'_>) -> Result<(), Error> {
         .filter(move |mci| mci.data.custom_id == interaction_uuid.to_string())
         .await
     {
-        ctx.send(
-            poise::CreateReply::default()
-                .content("Data has been deleted.".to_string())
-                .ephemeral(true),
-        )
-        .await?;
+        if let Err(why) = database::remove_all_sounds(ctx.author().id) {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content(format!("Error when deleting data: {why}."))
+                    .ephemeral(true),
+            )
+            .await?;
+        } else {
+            ctx.send(
+                poise::CreateReply::default()
+                    .content("Data has been deleted.".to_string())
+                    .ephemeral(true),
+            )
+            .await?;
+        }
 
         mci.create_response(ctx, CreateInteractionResponse::Acknowledge)
             .await?;
