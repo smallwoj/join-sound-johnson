@@ -236,21 +236,7 @@ async fn view(
     Ok(())
 }
 
-/// Remove a joinsound.
-#[poise::command(prefix_command, slash_command, track_edits)]
-#[instrument(
-    name="remove",
-    skip(ctx),
-    fields(
-        user_id=%ctx.author(),
-    )
-)]
-async fn remove(
-    ctx: Context<'_>,
-    #[description = "If true, the joinsound local to this server will be removed."]
-    #[flag]
-    local: bool,
-) -> Result<(), Error> {
+async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
     info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
     match ctx.say("🔃 Removing...").await {
@@ -268,10 +254,14 @@ async fn remove(
 
             if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
                 Ok(_) => {
+                    let remove_context = if local { "local" } else { "global" };
                     message
                         .edit(
                             ctx,
-                            poise::CreateReply::default().content("✅ Successful!".to_string()),
+                            poise::CreateReply::default().content(
+                                format!("✅ Successfully removed {} joinsound!", remove_context)
+                                    .to_string(),
+                            ),
                         )
                         .await
                 }
@@ -290,6 +280,39 @@ async fn remove(
         Err(why) => error!("Error sending message: {}", why),
     };
 
+    Ok(())
+}
+
+/// Remove a joinsound.
+#[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn remove(
+    ctx: Context<'_>,
+    #[description = "If true, the joinsound local to this server will be removed."]
+    #[flag]
+    local: bool,
+) -> Result<(), Error> {
+    _remove(ctx, local).await?;
+    Ok(())
+}
+
+/// Remove the joinsound local to this server.
+#[poise::command(prefix_command, slash_command, track_edits)]
+#[instrument(
+    name="remove_local",
+    skip(ctx),
+    fields(
+        user_id=%ctx.author(),
+    )
+)]
+async fn remove_local(ctx: Context<'_>) -> Result<(), Error> {
+    _remove(ctx, true).await?;
     Ok(())
 }
 
@@ -564,6 +587,7 @@ async fn main() {
                 set_local(),
                 view(),
                 remove(),
+                remove_local(),
                 leave(),
                 support(),
                 tos(),
