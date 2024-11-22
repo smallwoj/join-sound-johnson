@@ -149,14 +149,16 @@ pub fn get_last_played(
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(connection).unwrap_or_default()
+            .first::<Option<chrono::NaiveDateTime>>(connection)
+            .unwrap_or_default()
     } else {
         // Check global sound
         schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::last_played)
-            .first::<Option<chrono::NaiveDateTime>>(connection).unwrap_or_default()
+            .first::<Option<chrono::NaiveDateTime>>(connection)
+            .unwrap_or_default()
     }
 }
 
