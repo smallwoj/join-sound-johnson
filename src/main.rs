@@ -83,6 +83,11 @@ Set a sound to play everytime you join a voice channel!",
 )]
 async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error> {
     info!("Trying to set sound");
+    if ctx.guild().is_none() && local {
+        ctx.say("❌ Must be in the target server to set local joinsound")
+            .await?;
+        return Ok(());
+    }
 
     match ctx.say("🔃 Downloading...").await {
         Ok(message) => {
@@ -193,6 +198,11 @@ async fn view(
 ) -> Result<(), Error> {
     info!("Viewing joinsound");
     ctx.defer_ephemeral().await?;
+    if ctx.guild().is_none() && local {
+        ctx.say("❌ Must be in a server to view local joinsound")
+            .await?;
+        return Ok(());
+    }
     match ctx.say("🔃 Fetching...").await {
         Ok(message) => {
             let guild_id = match ctx.guild() {
@@ -242,6 +252,11 @@ async fn view(
 async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
     info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
+    if ctx.guild().is_none() && local {
+        ctx.say("❌ Must be in a server to remove local joinsound")
+            .await?;
+        return Ok(());
+    }
     match ctx.say("🔃 Removing...").await {
         Ok(message) => {
             let guild_id = match ctx.guild() {
