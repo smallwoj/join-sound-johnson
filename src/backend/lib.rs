@@ -8,7 +8,6 @@ use diesel::prelude::*;
 use file::save_file;
 use std::env::temp_dir;
 use std::path::{Path, PathBuf};
-use tokio::fs;
 use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
@@ -337,7 +336,9 @@ pub async fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error
         .expect("Error deleting joinsound");
 
     let path = Path::new(".").join("media").join(discord_id.to_string());
-    fs::remove_dir_all(path).await?;
 
+    file::delete_all_files(path)
+        .await
+        .expect("failed to delete all files");
     Ok(())
 }
