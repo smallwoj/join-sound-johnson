@@ -6,9 +6,10 @@ use std::{
 
 use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
 use tokio::{
-    fs::{create_dir_all, remove_file, File, OpenOptions},
+    fs::{create_dir_all, remove_dir, remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
+use tracing::warn;
 
 fn is_s3_mode() -> bool {
     env::var("S3_ENDPOINT").is_ok()
@@ -114,6 +115,17 @@ pub async fn delete_file(path: PathBuf) -> Result<(), Error> {
             Err(Error::from(ErrorKind::NotFound))
         }
     } else {
-        remove_file(path).await
+        remove_file(path.clone()).await?;
+        if let Some(dir) = path.clone().parent() {
+            let mut dir_buf = dir.to_path_buf();
+            while dir_buf.clone().exists() {
+                if let Err(why) = remove_dir(dir_buf.clone()).await {
+                    warn!("{why}");
+                    return Ok(());
+                }
+                dir_buf.pop();
+            }
+        }
+        Ok(())
     }
 }
