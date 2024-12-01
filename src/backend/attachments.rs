@@ -63,7 +63,6 @@ async fn save_video_as_audio(
         .expect("Could not convert the video to audio");
     info!("{:#?}", output);
     let temp_file = fs::File::open(temp_converted_file_path).await?;
-    println!("saving as {file_path:?}");
     file::save_file(file_path.to_path_buf(), temp_file).await?;
     Ok(())
 }
@@ -139,9 +138,7 @@ pub async fn download_sound(
         }
         let temp_file = fs::File::open(temp_file_path).await?;
         info!("saved as: {}", file.as_path().display());
-        println!("saved as: {}", file.as_path().display());
         file::save_file(file.clone(), temp_file).await?;
-        println!("here");
     }
     if let Some(path_str) = file.to_str() {
         return Ok(String::from(path_str));
