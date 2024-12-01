@@ -6,7 +6,7 @@ use std::{
 
 use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
 use tokio::{
-    fs::{remove_file, File},
+    fs::{create_dir_all, remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
@@ -80,9 +80,19 @@ pub async fn save_file(path: PathBuf, mut file: File) -> Result<(), Error> {
             Err(Error::from(ErrorKind::NotFound))
         }
     } else {
-        let mut new_file = File::create(path).await?;
+        if let Some(dir) = path.parent() {
+            if !dir.exists() {
+                create_dir_all(dir).await?;
+            }
+        }
+        let mut new_file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(path)
+            .await?;
         let mut buf = vec![];
-        let _ = new_file.read_to_end(&mut buf).await?;
+        let _ = file.read_to_end(&mut buf).await?;
         new_file.write_all(&buf).await?;
         Ok(())
     }

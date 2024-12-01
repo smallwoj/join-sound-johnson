@@ -5,11 +5,11 @@ use attachments::validate_attachment;
 use chrono::Duration;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
+use file::save_file;
 use std::env::temp_dir;
 use std::path::{Path, PathBuf};
 use tokio::fs;
-use tokio::io::AsyncReadExt;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
 
@@ -74,16 +74,11 @@ pub async fn get_sound(
             if let Err(why) = set_last_played(user_id, Some(guild)) {
                 error!("Error setting last played: {}", why);
             }
-            let mut joinsound_file = file::open_file(joinsound_path.clone().into())
+            let joinsound_file = file::open_file(joinsound_path.clone().into())
                 .await
                 .expect("Could not get join sound file");
             let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
-            let mut buf = vec![];
-            let _ = joinsound_file
-                .read_to_end(&mut buf)
-                .await
-                .expect("Could not read joinsound file");
-            fs::write(temp_file_path.clone(), &buf)
+            save_file(temp_file_path.clone(), joinsound_file)
                 .await
                 .expect("Could not write to temporary file");
             Ok(temp_file_path)
@@ -333,7 +328,7 @@ pub async fn remove_sound(
     }
 }
 
-pub fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
+pub async fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
     let connection = &mut connect();
 
     diesel::delete(schema::joinsounds::table)
@@ -342,9 +337,7 @@ pub fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
         .expect("Error deleting joinsound");
 
     let path = Path::new(".").join("media").join(discord_id.to_string());
-    if let Err(why) = fs::remove_dir_all(path) {
-        warn!("Error when deleting: {}", why);
-    }
+    fs::remove_dir_all(path).await?;
 
     Ok(())
 }
