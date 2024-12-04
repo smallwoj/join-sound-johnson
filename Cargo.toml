@@ -1,6 +1,6 @@
 [package]
 name = "join-sound-johnson"
-version = "1.2.1"
+version = "1.2.2"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -25,7 +25,7 @@ regex = "1.11.1"
 tokio = { version = "1.41.1", features = ["macros", "rt-multi-thread"] }
 
 poise = { version = "0.6.1", features = ["collector", "cache"] }
-songbird = "0.4.5"
+songbird = "0.4.6"
 rustls = "0.23.17"
 
 [dependencies.serenity]
