@@ -69,7 +69,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
                 error!("Error setting last played: {}", why);
             }
 
-            return Ok(Path::new(&joinsound_path).to_path_buf());
+            Ok(Path::new(&joinsound_path).to_path_buf())
         } else {
             Err("File path is null".to_string())
         }
@@ -86,7 +86,7 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
                     error!("Error setting last played: {}", why);
                 }
 
-                return Ok(Path::new(&joinsound_path).to_path_buf());
+                Ok(Path::new(&joinsound_path).to_path_buf())
             } else {
                 Err("File path is null".to_string())
             }
