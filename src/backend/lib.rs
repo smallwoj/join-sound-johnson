@@ -97,7 +97,7 @@ pub async fn get_sound(
                     error!("Error setting last played: {}", why);
                 }
 
-                return Ok(Path::new(&joinsound_path).to_path_buf());
+                Ok(Path::new(&joinsound_path).to_path_buf())
             } else {
                 Err("File path is null".to_string())
             }
