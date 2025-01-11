@@ -27,7 +27,13 @@ async fn get_bucket() -> Result<Bucket, S3Error> {
             .unwrap_or(String::from("http://localhost:9000"))
             .to_owned(),
     };
-    let credentials = Credentials::default()?;
+    let credentials = Credentials::new(
+        Some(&env::var("S3_ACCESS_KEY").unwrap()),
+        Some(&env::var("S3_SECRET_KEY").unwrap()),
+        None,
+        None,
+        None,
+    )?;
 
     let mut bucket =
         Bucket::new(&bucket_name, region.clone(), credentials.clone())?.with_path_style();
@@ -49,6 +55,7 @@ pub async fn open_file(path: PathBuf) -> Result<File, Error> {
     if is_s3_mode() {
         if let Ok(bucket) = get_bucket().await {
             if let Ok(response) = bucket.get_object(path.to_str().unwrap_or("")).await {
+                create_dir_all(PathBuf::from("/tmp").join(&path).parent().unwrap()).await?;
                 let mut file = File::create(PathBuf::from("/tmp").join(path)).await?;
                 file.write_all(response.bytes()).await?;
                 Ok(file)
