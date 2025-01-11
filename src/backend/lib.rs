@@ -96,8 +96,14 @@ pub async fn get_sound(
                 if let Err(why) = set_last_played(user_id, None) {
                     error!("Error setting last played: {}", why);
                 }
-
-                Ok(Path::new(&joinsound_path).to_path_buf())
+                let joinsound_file = file::open_file(joinsound_path.clone().into())
+                    .await
+                    .expect("Could not get join sound file");
+                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
+                save_file(temp_file_path.clone(), joinsound_file)
+                    .await
+                    .expect("Could not write to temporary file");
+                Ok(temp_file_path)
             } else {
                 Err("File path is null".to_string())
             }
