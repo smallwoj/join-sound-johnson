@@ -113,43 +113,57 @@ pub async fn get_sound(
     }
 }
 
-pub fn get_sound_path(
+pub async fn get_sound_path(
     user_id: serenity::UserId,
     guild: Option<serenity::GuildId>,
-) -> Result<String, String> {
+) -> Result<PathBuf, String> {
     let connection = &mut connect();
 
+    // Check local sound first
     if let Some(guild_id) = guild {
-        // Check local sound first
-        if let Ok(file_path) = schema::joinsounds::table
+        if let Ok(path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(path) = file_path {
-                Ok(path)
+            if let Some(joinsound_path) = path {
+                let joinsound_file = file::open_file(joinsound_path.clone().into())
+                    .await
+                    .expect("Could not get join sound file");
+                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
+                save_file(temp_file_path.clone(), joinsound_file)
+                    .await
+                    .expect("Could not write to temporary file");
+                Ok(temp_file_path)
             } else {
-                Err("path is null".to_string())
+                Err("File path is null".to_string())
             }
         } else {
-            Err("You do not have a joinsound for this server".to_string())
+            Err("No local joinsound entry".to_string())
         }
     } else {
         // Check global sound
-        if let Ok(file_path) = schema::joinsounds::table
+        if let Ok(path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(path) = file_path {
-                Ok(path)
+            if let Some(joinsound_path) = path {
+                let joinsound_file = file::open_file(joinsound_path.clone().into())
+                    .await
+                    .expect("Could not get join sound file");
+                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
+                save_file(temp_file_path.clone(), joinsound_file)
+                    .await
+                    .expect("Could not write to temporary file");
+                Ok(temp_file_path)
             } else {
-                Err("path is null".to_string())
+                Err("File path is null".to_string())
             }
         } else {
-            Err("You do not have a global joinsound.".to_string())
+            Err("No global joinsound entry".to_string())
         }
     }
 }

@@ -214,7 +214,7 @@ async fn view(
                 None => None,
             };
 
-            if let Err(why) = match backend::get_sound_path(ctx.author().id, guild_id) {
+            if let Err(why) = match backend::get_sound_path(ctx.author().id, guild_id).await {
                 Ok(path) => {
                     let file_path = Path::new(&path);
                     let attachment_type =
