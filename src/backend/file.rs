@@ -6,7 +6,7 @@ use std::{
 
 use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
 use tokio::{
-    fs::{create_dir_all, remove_dir, remove_dir_all, remove_file, File, OpenOptions},
+    fs::{create_dir_all, remove_dir, remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 use tracing::warn;
@@ -135,13 +135,4 @@ pub async fn delete_file(path: PathBuf) -> Result<(), Error> {
         }
         Ok(())
     }
-}
-
-pub async fn delete_all_files(path: PathBuf) -> Result<(), Error> {
-    if is_s3_mode() {
-        panic!("not implemented!");
-    } else {
-        remove_dir_all(path).await?;
-    }
-    Ok(())
 }
