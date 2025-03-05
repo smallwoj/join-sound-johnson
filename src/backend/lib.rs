@@ -5,9 +5,7 @@ use attachments::validate_attachment;
 use chrono::Duration;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use file::save_file;
-use std::env::temp_dir;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
@@ -73,14 +71,10 @@ pub async fn get_sound(
             if let Err(why) = set_last_played(user_id, Some(guild)) {
                 error!("Error setting last played: {}", why);
             }
-            let joinsound_file = file::open_file(joinsound_path.clone().into())
+            let joinsound_file_path = file::canonicalize_file_path(joinsound_path.clone().into())
                 .await
                 .expect("Could not get join sound file");
-            let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
-            save_file(temp_file_path.clone(), joinsound_file)
-                .await
-                .expect("Could not write to temporary file");
-            Ok(temp_file_path)
+            Ok(joinsound_file_path)
         } else {
             Err("File path is null".to_string())
         }
@@ -96,14 +90,11 @@ pub async fn get_sound(
                 if let Err(why) = set_last_played(user_id, None) {
                     error!("Error setting last played: {}", why);
                 }
-                let joinsound_file = file::open_file(joinsound_path.clone().into())
-                    .await
-                    .expect("Could not get join sound file");
-                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
-                save_file(temp_file_path.clone(), joinsound_file)
-                    .await
-                    .expect("Could not write to temporary file");
-                Ok(temp_file_path)
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
                 Err("File path is null".to_string())
             }
@@ -128,14 +119,11 @@ pub async fn get_sound_path(
             .first::<Option<String>>(connection)
         {
             if let Some(joinsound_path) = path {
-                let joinsound_file = file::open_file(joinsound_path.clone().into())
-                    .await
-                    .expect("Could not get join sound file");
-                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
-                save_file(temp_file_path.clone(), joinsound_file)
-                    .await
-                    .expect("Could not write to temporary file");
-                Ok(temp_file_path)
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
                 Err("File path is null".to_string())
             }
@@ -151,14 +139,11 @@ pub async fn get_sound_path(
             .first::<Option<String>>(connection)
         {
             if let Some(joinsound_path) = path {
-                let joinsound_file = file::open_file(joinsound_path.clone().into())
-                    .await
-                    .expect("Could not get join sound file");
-                let temp_file_path = Path::new(&temp_dir()).join(joinsound_path);
-                save_file(temp_file_path.clone(), joinsound_file)
-                    .await
-                    .expect("Could not write to temporary file");
-                Ok(temp_file_path)
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
                 Err("File path is null".to_string())
             }
@@ -356,7 +341,8 @@ pub async fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error
         .load::<Option<String>>(connection)
     {
         for guild_id_str in guilds {
-            let guild_id = guild_id_str.map(|guild| serenity::GuildId::from(guild.parse().unwrap_or(0)));
+            let guild_id =
+                guild_id_str.map(|guild| serenity::GuildId::from(guild.parse().unwrap_or(0)));
             remove_sound(discord_id, guild_id).await?;
         }
     }

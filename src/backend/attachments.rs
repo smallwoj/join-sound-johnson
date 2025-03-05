@@ -14,6 +14,7 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 async fn save_attachment(attachment: serenity::Attachment, file_path: &Path) -> Result<(), Error> {
     let bytes = attachment.download().await?;
     let mut f = OpenOptions::new()
+        .read(true)
         .write(true)
         .create(true)
         .truncate(true)
@@ -43,6 +44,7 @@ async fn save_video_as_audio(
 
     // touch file to make it exist
     OpenOptions::new()
+        .read(true)
         .write(true)
         .create(true)
         .truncate(true)
@@ -63,7 +65,7 @@ async fn save_video_as_audio(
         .expect("Could not convert the video to audio");
     info!("{:#?}", output);
     let temp_file = fs::File::open(temp_converted_file_path).await?;
-    file::save_file(file_path.to_path_buf(), temp_file).await?;
+    file::save_file_on_fs(file_path.to_path_buf(), temp_file).await?;
     Ok(())
 }
 
@@ -104,12 +106,11 @@ pub async fn download_sound(
 ) -> Result<String, Error> {
     // Build the destination folder
     let folder = if let Some(guild) = guild_id {
-        Path::new(".")
-            .join("media")
+        Path::new("media")
             .join(discord_id.to_string())
             .join(guild.to_string())
     } else {
-        Path::new(".").join("media").join(discord_id.to_string())
+        Path::new("media").join(discord_id.to_string())
     };
     let temp_file_path = Path::new("/tmp").join(format!(
         "joinsounds_{}_{}",

@@ -367,6 +367,7 @@ async fn purge(ctx: Context<'_>) -> Result<(), Error> {
         .filter(move |mci| mci.data.custom_id == interaction_uuid.to_string())
         .await
     {
+        ctx.defer().await?;
         if let Err(why) = backend::remove_all_sounds(ctx.author().id).await {
             ctx.send(
                 poise::CreateReply::default()
