@@ -6,7 +6,7 @@ use songbird::{
 use std::sync::Arc;
 use tracing::{error, info, instrument, span, warn, Level};
 
-use super::database;
+use super::backend;
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -30,13 +30,12 @@ pub async fn event_listener(
                     new.user_id, new.guild_id
                 );
                 if let Some(guild_id) = new.guild_id {
-                    let has_local_sound = database::has_sound(new.user_id, Some(guild_id));
-                    let has_global_sound = database::has_sound(new.user_id, None);
+                    let has_local_sound = backend::has_sound(new.user_id, Some(guild_id));
+                    let has_global_sound = backend::has_sound(new.user_id, None);
                     if has_local_sound || has_global_sound {
                         let last_played_local_option =
-                            database::get_last_played(new.user_id, Some(guild_id));
-                        let last_played_global_option =
-                            database::get_last_played(new.user_id, None);
+                            backend::get_last_played(new.user_id, Some(guild_id));
+                        let last_played_global_option = backend::get_last_played(new.user_id, None);
                         let last_played = if last_played_local_option.is_some()
                             && last_played_global_option.is_some()
                         {
@@ -88,13 +87,14 @@ pub async fn event_listener(
                         }
 
                         if let Some(handler_lock) = manager.get(guild_id) {
-                            let songbird_file = match database::get_sound(new.user_id, guild_id) {
-                                Ok(joinsound) => songbird::input::File::new(joinsound),
-                                Err(_) => {
-                                    error!("no joinsound");
-                                    return Ok(());
-                                }
-                            };
+                            let songbird_file =
+                                match backend::get_sound(new.user_id, guild_id).await {
+                                    Ok(joinsound) => songbird::input::File::new(joinsound),
+                                    Err(_) => {
+                                        error!("no joinsound");
+                                        return Ok(());
+                                    }
+                                };
                             let track = Track::from(songbird_file);
                             let mut handler = handler_lock.lock().await;
                             let track_handler = handler.play_only(track);

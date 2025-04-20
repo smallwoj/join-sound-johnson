@@ -5,14 +5,14 @@ use attachments::validate_attachment;
 use chrono::Duration;
 use diesel::dsl::{exists, select};
 use diesel::prelude::*;
-use std::fs;
-use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use std::path::PathBuf;
+use tracing::{error, info};
 
 use poise::serenity_prelude as serenity;
 
 pub mod attachments;
 pub mod database;
+pub mod file;
 pub mod models;
 pub mod schema;
 
@@ -54,7 +54,10 @@ pub fn has_any_sound(in_discord_id: serenity::UserId) -> bool {
     res.unwrap_or(false)
 }
 
-pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<PathBuf, String> {
+pub async fn get_sound(
+    user_id: serenity::UserId,
+    guild: serenity::GuildId,
+) -> Result<PathBuf, String> {
     let connection = &mut connect();
 
     // Check local sound first
@@ -68,8 +71,10 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
             if let Err(why) = set_last_played(user_id, Some(guild)) {
                 error!("Error setting last played: {}", why);
             }
-
-            Ok(Path::new(&joinsound_path).to_path_buf())
+            let joinsound_file_path = file::canonicalize_file_path(joinsound_path.clone().into())
+                .await
+                .expect("Could not get join sound file");
+            Ok(joinsound_file_path)
         } else {
             Err("File path is null".to_string())
         }
@@ -85,8 +90,11 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
                 if let Err(why) = set_last_played(user_id, None) {
                     error!("Error setting last played: {}", why);
                 }
-
-                Ok(Path::new(&joinsound_path).to_path_buf())
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
                 Err("File path is null".to_string())
             }
@@ -96,43 +104,51 @@ pub fn get_sound(user_id: serenity::UserId, guild: serenity::GuildId) -> Result<
     }
 }
 
-pub fn get_sound_path(
+pub async fn get_sound_path(
     user_id: serenity::UserId,
     guild: Option<serenity::GuildId>,
-) -> Result<String, String> {
+) -> Result<PathBuf, String> {
     let connection = &mut connect();
 
+    // Check local sound first
     if let Some(guild_id) = guild {
-        // Check local sound first
-        if let Ok(file_path) = schema::joinsounds::table
+        if let Ok(path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.eq(guild_id.to_string()))
             .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(path) = file_path {
-                Ok(path)
+            if let Some(joinsound_path) = path {
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
-                Err("path is null".to_string())
+                Err("File path is null".to_string())
             }
         } else {
-            Err("You do not have a joinsound for this server".to_string())
+            Err("No local joinsound entry".to_string())
         }
     } else {
         // Check global sound
-        if let Ok(file_path) = schema::joinsounds::table
+        if let Ok(path) = schema::joinsounds::table
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
             .filter(schema::joinsounds::guild_id.is_null())
             .select(schema::joinsounds::file_path)
             .first::<Option<String>>(connection)
         {
-            if let Some(path) = file_path {
-                Ok(path)
+            if let Some(joinsound_path) = path {
+                let joinsound_file_path =
+                    file::canonicalize_file_path(joinsound_path.clone().into())
+                        .await
+                        .expect("Could not get join sound file");
+                Ok(joinsound_file_path)
             } else {
-                Err("path is null".to_string())
+                Err("File path is null".to_string())
             }
         } else {
-            Err("You do not have a global joinsound.".to_string())
+            Err("No global joinsound entry".to_string())
         }
     }
 }
@@ -215,7 +231,7 @@ pub async fn update_sound(
             } else {
                 // remove the sound first
                 if has_sound(user_id, guild_id) {
-                    remove_sound(user_id, guild_id)?;
+                    remove_sound(user_id, guild_id).await?;
                 }
                 let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
                 // Database entry is deleted at this point, create the new sound
@@ -252,7 +268,7 @@ pub fn set_last_played(
     Ok(())
 }
 
-pub fn remove_sound(
+pub async fn remove_sound(
     discord_id: serenity::UserId,
     guild_id: Option<serenity::GuildId>,
 ) -> Result<(), Error> {
@@ -260,8 +276,6 @@ pub fn remove_sound(
         if let Some(guild) = guild_id {
             let connection = &mut connect();
             let guild_str = guild.to_string();
-            let will_remove_folder;
-            let joinsound_path_string;
 
             // get file path to remove it
             if let Ok(Some(joinsound_path)) = schema::joinsounds::table
@@ -270,10 +284,7 @@ pub fn remove_sound(
                 .select(schema::joinsounds::file_path)
                 .first::<Option<String>>(connection)
             {
-                joinsound_path_string = joinsound_path.clone();
-                let joinsound_path_str = joinsound_path.as_str();
-                fs::remove_file(joinsound_path_str).expect("Error removing joinsound file");
-                will_remove_folder = true;
+                file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -287,22 +298,9 @@ pub fn remove_sound(
                 .execute(connection)
                 .expect("Error deleting joinsound");
 
-            if will_remove_folder {
-                let joinsound_path_str = joinsound_path_string.as_str();
-                if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir_all(joinsound_folder).expect("Error removing joinsound folder");
-                    if !has_any_sound(discord_id) {
-                        if let Some(user_folder) = joinsound_folder.parent() {
-                            fs::remove_dir_all(user_folder).expect("Error removing user folder");
-                        }
-                    }
-                }
-            }
             Ok(())
         } else {
             let connection = &mut connect();
-            let will_remove_folder;
-            let joinsound_path_string;
             // get file path to remove it
             if let Ok(Some(joinsound_path)) = schema::joinsounds::table
                 .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
@@ -310,10 +308,7 @@ pub fn remove_sound(
                 .select(schema::joinsounds::file_path)
                 .first::<Option<String>>(connection)
             {
-                joinsound_path_string = joinsound_path.clone();
-                let joinsound_path_str = joinsound_path.as_str();
-                fs::remove_file(joinsound_path_str).expect("Error removing joinsound file");
-                will_remove_folder = true;
+                file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
                 return Err(Box::new(std::io::Error::new(
                     std::io::ErrorKind::Other,
@@ -327,12 +322,6 @@ pub fn remove_sound(
                 .execute(connection)
                 .expect("Error deleting joinsound");
 
-            if will_remove_folder && !has_any_sound(discord_id) {
-                let joinsound_path_str = joinsound_path_string.as_str();
-                if let Some(joinsound_folder) = Path::new(joinsound_path_str).parent() {
-                    fs::remove_dir_all(joinsound_folder).expect("Error removing user folder");
-                }
-            }
             Ok(())
         }
     } else {
@@ -343,18 +332,19 @@ pub fn remove_sound(
     }
 }
 
-pub fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
+pub async fn remove_all_sounds(discord_id: serenity::UserId) -> Result<(), Error> {
     let connection = &mut connect();
 
-    diesel::delete(schema::joinsounds::table)
+    if let Ok(guilds) = schema::joinsounds::table
         .filter(schema::joinsounds::discord_id.eq(discord_id.to_string()))
-        .execute(connection)
-        .expect("Error deleting joinsound");
-
-    let path = Path::new(".").join("media").join(discord_id.to_string());
-    if let Err(why) = fs::remove_dir_all(path) {
-        warn!("Error when deleting: {}", why);
+        .select(schema::joinsounds::guild_id)
+        .load::<Option<String>>(connection)
+    {
+        for guild_id_str in guilds {
+            let guild_id =
+                guild_id_str.map(|guild| serenity::GuildId::from(guild.parse().unwrap_or(0)));
+            remove_sound(discord_id, guild_id).await?;
+        }
     }
-
     Ok(())
 }

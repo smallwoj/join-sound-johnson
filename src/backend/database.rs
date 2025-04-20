@@ -27,7 +27,6 @@ pub fn create_new_joinsound(
         discord_id: &user_id.to_string(),
         guild_id: guild_option,
         file_path: &file_path,
-        video_url: "",
     };
     diesel::insert_into(schema::joinsounds::table)
         .values(&new_sound)
@@ -48,7 +47,6 @@ pub fn update_joinsound(
             discord_id: &user_id.to_string(),
             guild_id: guild_option,
             file_path: &file_path.to_string(),
-            video_url: "",
         };
         diesel::update(schema::joinsounds::table)
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))
@@ -62,7 +60,6 @@ pub fn update_joinsound(
             discord_id: &user_id.to_string(),
             guild_id: None,
             file_path: &file_path.to_string(),
-            video_url: "",
         };
         diesel::update(schema::joinsounds::table)
             .filter(schema::joinsounds::discord_id.eq(user_id.to_string()))

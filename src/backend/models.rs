@@ -8,7 +8,6 @@ pub struct JoinSounds {
     pub discord_id: String,
     pub guild_id: String,
     pub file_path: String,
-    pub video_url: String,
 }
 
 #[derive(Insertable, AsChangeset)]
@@ -17,5 +16,4 @@ pub struct NewJoinSound<'a> {
     pub discord_id: &'a str,
     pub guild_id: Option<&'a str>,
     pub file_path: &'a str,
-    pub video_url: &'a str,
 }

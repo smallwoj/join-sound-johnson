@@ -7,11 +7,14 @@ use tokio::fs;
 use tokio::{fs::OpenOptions, io::AsyncWriteExt};
 use tracing::info;
 
+use crate::file;
+
 type Error = Box<dyn std::error::Error + Send + Sync>;
 
 async fn save_attachment(attachment: serenity::Attachment, file_path: &Path) -> Result<(), Error> {
     let bytes = attachment.download().await?;
     let mut f = OpenOptions::new()
+        .read(true)
         .write(true)
         .create(true)
         .truncate(true)
@@ -27,31 +30,42 @@ async fn save_video_as_audio(
 ) -> Result<(), Error> {
     let attachment_id = attachment.id;
     let filename = attachment.filename.as_str();
-    let temp_file_path =
-        Path::new("/tmp").join(format!("joinsounds_{}_{}", attachment_id.get(), filename));
+    let temp_file_path = Path::new("/tmp").join(format!(
+        "temp_joinsounds_{}_{}",
+        attachment_id.get(),
+        filename
+    ));
+    let temp_converted_file_path = Path::new("/tmp").join(format!(
+        "converted_joinsounds_{}_{}",
+        attachment_id.get(),
+        filename
+    ));
     save_attachment(attachment, temp_file_path.as_path()).await?;
 
     // touch file to make it exist
     OpenOptions::new()
+        .read(true)
         .write(true)
         .create(true)
         .truncate(true)
-        .open(file_path)
+        .open(temp_converted_file_path.clone())
         .await?;
     let mut cmd = Command::new("ffmpeg");
     cmd.arg("-y")
         .arg("-i")
         .arg(temp_file_path.as_os_str())
-        .arg(file_path.as_os_str());
+        .arg(temp_converted_file_path.as_os_str());
     info!("{:#?}", cmd);
     let output = Command::new("ffmpeg")
         .arg("-y")
         .arg("-i")
         .arg(temp_file_path.as_os_str())
-        .arg(file_path.as_os_str())
+        .arg(temp_converted_file_path.as_os_str())
         .output()
         .expect("Could not convert the video to audio");
     info!("{:#?}", output);
+    let temp_file = fs::File::open(temp_converted_file_path).await?;
+    file::save_file_on_fs(file_path.to_path_buf(), temp_file).await?;
     Ok(())
 }
 
@@ -92,21 +106,17 @@ pub async fn download_sound(
 ) -> Result<String, Error> {
     // Build the destination folder
     let folder = if let Some(guild) = guild_id {
-        Path::new(".")
-            .join("media")
+        Path::new("media")
             .join(discord_id.to_string())
             .join(guild.to_string())
     } else {
-        Path::new(".").join("media").join(discord_id.to_string())
+        Path::new("media").join(discord_id.to_string())
     };
-
-    // Create the folder if it does not exist
-
-    if !folder.exists() {
-        if let Err(why) = fs::create_dir_all(&folder).await {
-            return Err(Box::new(why));
-        }
-    }
+    let temp_file_path = Path::new("/tmp").join(format!(
+        "joinsounds_{}_{}",
+        attachment.id.get(),
+        attachment.filename,
+    ));
 
     let mut file = folder.join(&attachment.filename);
     if let Some(ref content_type) = attachment.content_type {
@@ -122,15 +132,17 @@ pub async fn download_sound(
                 attachment.clone().filename + ".mp3"
             };
             let new_filepath = folder.join(new_filename);
-            save_video_as_audio(attachment, new_filepath.as_path()).await?;
+            save_video_as_audio(attachment, temp_file_path.as_path()).await?;
             file = new_filepath;
         } else {
-            save_attachment(attachment, file.as_path()).await?;
+            save_attachment(attachment, temp_file_path.as_path()).await?;
         }
+        let temp_file = fs::File::open(temp_file_path).await?;
         info!("saved as: {}", file.as_path().display());
+        file::save_file(file.clone(), temp_file).await?;
     }
-    if let Ok(file_path) = file.canonicalize() {
-        return Ok(file_path.to_str().unwrap().to_string());
+    if let Some(path_str) = file.to_str() {
+        return Ok(String::from(path_str));
     }
     Err(Box::new(std::io::Error::new(
         std::io::ErrorKind::Other,

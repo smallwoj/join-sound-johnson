@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use jsj_backend as database;
+use jsj_backend as backend;
 use poise::serenity_prelude::Attachment;
 use serenity::all::{
     colours, ActivityData, ButtonStyle, ComponentInteractionCollector, CreateActionRow,
@@ -102,33 +102,31 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                 None => None,
             };
 
-            if database::has_sound(ctx.author().id, guild_id) {
-                if let Err(why) =
-                    match database::update_sound(ctx.author().id, attachment, guild_id).await {
-                        Ok(_) => {
-                            message
-                                .edit(
-                                    ctx,
-                                    poise::CreateReply::default()
-                                        .content("✅ Successful!".to_string()),
-                                )
-                                .await
-                        }
-                        Err(why) => {
-                            message
-                                .edit(
-                                    ctx,
-                                    poise::CreateReply::default()
-                                        .content(format!("❌ Error: {}", why)),
-                                )
-                                .await
-                        }
-                    }
+            if backend::has_sound(ctx.author().id, guild_id) {
+                if let Err(why) = match backend::update_sound(ctx.author().id, attachment, guild_id)
+                    .await
                 {
+                    Ok(_) => {
+                        message
+                            .edit(
+                                ctx,
+                                poise::CreateReply::default().content("✅ Successful!".to_string()),
+                            )
+                            .await
+                    }
+                    Err(why) => {
+                        message
+                            .edit(
+                                ctx,
+                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                            )
+                            .await
+                    }
+                } {
                     error!("Error sending message: {}", why);
                 }
             } else if let Err(why) =
-                match database::upload_sound(ctx.author().id, attachment, guild_id).await {
+                match backend::upload_sound(ctx.author().id, attachment, guild_id).await {
                     Ok(_) => {
                         message
                             .edit(
@@ -216,7 +214,7 @@ async fn view(
                 None => None,
             };
 
-            if let Err(why) = match database::get_sound_path(ctx.author().id, guild_id) {
+            if let Err(why) = match backend::get_sound_path(ctx.author().id, guild_id).await {
                 Ok(path) => {
                     let file_path = Path::new(&path);
                     let attachment_type =
@@ -270,7 +268,7 @@ async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
                 None => None,
             };
 
-            if let Err(why) = match database::remove_sound(ctx.author().id, guild_id) {
+            if let Err(why) = match backend::remove_sound(ctx.author().id, guild_id).await {
                 Ok(_) => {
                     let remove_context = if local { "local" } else { "global" };
                     message
@@ -369,7 +367,8 @@ async fn purge(ctx: Context<'_>) -> Result<(), Error> {
         .filter(move |mci| mci.data.custom_id == interaction_uuid.to_string())
         .await
     {
-        if let Err(why) = database::remove_all_sounds(ctx.author().id) {
+        ctx.defer().await?;
+        if let Err(why) = backend::remove_all_sounds(ctx.author().id).await {
             ctx.send(
                 poise::CreateReply::default()
                     .content(format!("Error when deleting data: {why}."))
