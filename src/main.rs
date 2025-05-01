@@ -11,6 +11,7 @@ use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
+use clap::{Parser, Subcommand};
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
@@ -25,6 +26,24 @@ type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
 mod event_listener;
+
+#[derive(Parser)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    RegisterCommands {
+        #[arg(long)]
+        guild: Option<u64>,
+    },
+    DeleteCommands {
+        #[arg(long)]
+        guild: Option<u64>,
+    },
+}
 
 /// Get a cool response from the server.
 #[poise::command(prefix_command, slash_command, track_edits)]
@@ -587,64 +606,38 @@ async fn main() {
             Box::pin(async move {
                 let activity = ActivityData::watching("/set an attachment!");
                 ctx.set_presence(Some(activity), OnlineStatus::Online);
-                let register_method = match std::env::var("JSJ_REGISTER_METHOD") {
-                    Ok(method) => match method.as_str() {
-                        "register" => Some("register"),
-                        "delete" => Some("delete"),
-                        _ => None,
-                    },
-                    Err(_) => None,
-                };
-                let register_context = match std::env::var("JSJ_REGISTER_CONTEXT") {
-                    Ok(context) => match context.as_str() {
-                        "global" => Some("global"),
-                        "guild" => Some("guild"),
-                        _ => None,
-                    },
-                    Err(_) => None,
-                };
-                match (register_method, register_context) {
-                    (Some("register"), Some("global")) => {
-                        println!("registering all commands globally");
-                        poise::builtins::register_globally(ctx, &framework.options().commands)
-                            .await?;
-                        std::process::exit(0);
-                    }
-                    (Some("delete"), Some("global")) => {
-                        println!("removing all global commands");
-                        poise::serenity_prelude::Command::set_global_commands(ctx, vec![]).await?;
-                        std::process::exit(0);
-                    }
-                    (Some("register"), Some("guild")) => {
-                        let guild_id = std::env::var("JSJ_GUILD_ID")
-                            .expect(
-                                "JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"",
+                let args = Cli::parse();
+                match args.command {
+                    Some(Commands::RegisterCommands { guild }) => {
+                        if let Some(guild_id) = guild {
+                            println!("registering all commands in guild {}", guild_id);
+                            poise::builtins::register_in_guild(
+                                ctx,
+                                &framework.options().commands,
+                                poise::serenity_prelude::GuildId::new(guild_id),
                             )
-                            .parse::<u64>()
-                            .unwrap();
-                        println!("registering all commands in guild {}", guild_id);
-                        poise::builtins::register_in_guild(
-                            ctx,
-                            &framework.options().commands,
-                            poise::serenity_prelude::GuildId::new(guild_id),
-                        )
-                        .await?;
-                        std::process::exit(0);
-                    }
-                    (Some("delete"), Some("guild")) => {
-                        let guild_id = std::env::var("JSJ_GUILD_ID")
-                            .expect(
-                                "JSJ_GUILD_ID required when setting JSJ_REGISTER_CONTEXT=\"guild\"",
-                            )
-                            .parse::<u64>()
-                            .unwrap();
-                        println!("deleting all commands locally in guild {}", guild_id);
-                        poise::serenity_prelude::GuildId::new(guild_id)
-                            .set_commands(ctx, vec![])
                             .await?;
+                        } else {
+                            println!("registering all commands globally");
+                            poise::builtins::register_globally(ctx, &framework.options().commands)
+                                .await?;
+                        }
                         std::process::exit(0);
                     }
-                    (_, _) => {}
+                    Some(Commands::DeleteCommands { guild }) => {
+                        if let Some(guild_id) = guild {
+                            println!("deleting all commands locally in guild {}", guild_id);
+                            poise::serenity_prelude::GuildId::new(guild_id)
+                                .set_commands(ctx, vec![])
+                                .await?;
+                        } else {
+                            println!("removing all global commands");
+                            poise::serenity_prelude::Command::set_global_commands(ctx, vec![])
+                                .await?;
+                        }
+                        std::process::exit(0);
+                    }
+                    _ => {}
                 }
 
                 Ok(())

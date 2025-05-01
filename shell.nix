@@ -12,6 +12,8 @@ pkgs.mkShell {
     pkgs.libmysqlclient
     pkgs.libopus
     pkgs.ffmpeg
+    pkgs.clippy
+    pkgs.rustfmt
   ];
 }
 
