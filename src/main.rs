@@ -11,6 +11,7 @@ use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
 
+use clap::{Parser, Subcommand};
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
@@ -19,7 +20,6 @@ use opentelemetry_sdk::{trace, Resource};
 use tracing::{error, info, instrument};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::Registry;
-use clap::{Parser, Subcommand};
 
 type Data = ();
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -617,8 +617,7 @@ async fn main() {
                                 poise::serenity_prelude::GuildId::new(guild_id),
                             )
                             .await?;
-                        }
-                        else {
+                        } else {
                             println!("registering all commands globally");
                             poise::builtins::register_globally(ctx, &framework.options().commands)
                                 .await?;
@@ -626,14 +625,15 @@ async fn main() {
                         std::process::exit(0);
                     }
                     Some(Commands::DeleteCommands { guild }) => {
-                        if let Some(guild_id) = guild{
-                        println!("deleting all commands locally in guild {}", guild_id);
-                        poise::serenity_prelude::GuildId::new(guild_id)
-                            .set_commands(ctx, vec![])
-                            .await?;}
-                        else{
-                        println!("removing all global commands");
-                        poise::serenity_prelude::Command::set_global_commands(ctx, vec![]).await?;
+                        if let Some(guild_id) = guild {
+                            println!("deleting all commands locally in guild {}", guild_id);
+                            poise::serenity_prelude::GuildId::new(guild_id)
+                                .set_commands(ctx, vec![])
+                                .await?;
+                        } else {
+                            println!("removing all global commands");
+                            poise::serenity_prelude::Command::set_global_commands(ctx, vec![])
+                                .await?;
                         }
                         std::process::exit(0);
                     }
