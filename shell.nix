@@ -13,6 +13,7 @@ pkgs.mkShell {
     pkgs.libopus
     pkgs.ffmpeg
     pkgs.clippy
+    pkgs.rustfmt
   ];
 }
 
