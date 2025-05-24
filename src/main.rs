@@ -623,7 +623,7 @@ async fn main() {
                         subcommands::discord_commands::delete_commands(ctx.clone(), guild).await?;
                         std::process::exit(0);
                     }
-                    Some(SubCommands::MigrateDb {}) => {
+                    Some(SubCommands::MigrateDb) => {
                         subcommands::migrate_db::migrate_db();
                         std::process::exit(0);
                     }
