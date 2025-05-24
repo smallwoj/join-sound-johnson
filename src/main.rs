@@ -10,6 +10,7 @@ use serenity::all::{
 use serenity::model::gateway::GatewayIntents;
 use serenity::model::user::OnlineStatus;
 use songbird::SerenityInit;
+mod subcommands;
 
 use clap::{Parser, Subcommand};
 use opentelemetry::trace::TracerProvider as _;
@@ -609,32 +610,16 @@ async fn main() {
                 let args = Cli::parse();
                 match args.command {
                     Some(Commands::RegisterCommands { guild }) => {
-                        if let Some(guild_id) = guild {
-                            println!("registering all commands in guild {}", guild_id);
-                            poise::builtins::register_in_guild(
-                                ctx,
-                                &framework.options().commands,
-                                poise::serenity_prelude::GuildId::new(guild_id),
-                            )
-                            .await?;
-                        } else {
-                            println!("registering all commands globally");
-                            poise::builtins::register_globally(ctx, &framework.options().commands)
-                                .await?;
-                        }
+                        subcommands::discord_commands::register_commands(
+                            ctx.clone(),
+                            framework,
+                            guild,
+                        )
+                        .await?;
                         std::process::exit(0);
                     }
                     Some(Commands::DeleteCommands { guild }) => {
-                        if let Some(guild_id) = guild {
-                            println!("deleting all commands locally in guild {}", guild_id);
-                            poise::serenity_prelude::GuildId::new(guild_id)
-                                .set_commands(ctx, vec![])
-                                .await?;
-                        } else {
-                            println!("removing all global commands");
-                            poise::serenity_prelude::Command::set_global_commands(ctx, vec![])
-                                .await?;
-                        }
+                        subcommands::discord_commands::delete_commands(ctx.clone(), guild).await?;
                         std::process::exit(0);
                     }
                     _ => {}
