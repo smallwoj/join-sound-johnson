@@ -19,6 +19,7 @@ opentelemetry-otlp = { version = "0.15.0", features = [
 ] }
 
 diesel = { version = "2.2.4", features = ["mysql", "chrono"] }
+diesel_migrations = { version = "2.2.0", features = ["mysql"] }
 chrono = "0.4.38"
 dotenv = "0.15.0"
 regex = "1.11.1"
