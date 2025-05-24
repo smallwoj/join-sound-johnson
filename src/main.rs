@@ -31,11 +31,11 @@ mod event_listener;
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Option<SubCommands>,
 }
 
 #[derive(Subcommand)]
-enum Commands {
+enum SubCommands {
     RegisterCommands {
         #[arg(long)]
         guild: Option<u64>,
@@ -44,6 +44,7 @@ enum Commands {
         #[arg(long)]
         guild: Option<u64>,
     },
+    MigrateDb,
 }
 
 /// Get a cool response from the server.
@@ -609,7 +610,7 @@ async fn main() {
                 ctx.set_presence(Some(activity), OnlineStatus::Online);
                 let args = Cli::parse();
                 match args.command {
-                    Some(Commands::RegisterCommands { guild }) => {
+                    Some(SubCommands::RegisterCommands { guild }) => {
                         subcommands::discord_commands::register_commands(
                             ctx.clone(),
                             framework,
@@ -618,8 +619,12 @@ async fn main() {
                         .await?;
                         std::process::exit(0);
                     }
-                    Some(Commands::DeleteCommands { guild }) => {
+                    Some(SubCommands::DeleteCommands { guild }) => {
                         subcommands::discord_commands::delete_commands(ctx.clone(), guild).await?;
+                        std::process::exit(0);
+                    }
+                    Some(SubCommands::MigrateDb {}) => {
+                        subcommands::migrate_db::migrate_db();
                         std::process::exit(0);
                     }
                     _ => {}
