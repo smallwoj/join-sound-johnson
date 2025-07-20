@@ -629,7 +629,7 @@ async fn main() {
                         std::process::exit(0);
                     }
                     Some(SubCommands::MigrateMediaToS3) => {
-                        subcommands::media_migration::migrate_to_s3();
+                        subcommands::media_migration::migrate_to_s3().await;
                         std::process::exit(0);
                     }
                     _ => {}
