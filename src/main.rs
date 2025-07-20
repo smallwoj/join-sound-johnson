@@ -140,7 +140,7 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                         message
                             .edit(
                                 ctx,
-                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                                poise::CreateReply::default().content(format!("❌ Error: {why}")),
                             )
                             .await
                     }
@@ -161,7 +161,7 @@ async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Res
                         message
                             .edit(
                                 ctx,
-                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                                poise::CreateReply::default().content(format!("❌ Error: {why}")),
                             )
                             .await
                     }
@@ -256,7 +256,7 @@ async fn view(
                     message
                         .edit(
                             ctx,
-                            poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                            poise::CreateReply::default().content(format!("❌ Error: {why}")),
                         )
                         .await
                 }
@@ -297,7 +297,7 @@ async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
                         .edit(
                             ctx,
                             poise::CreateReply::default().content(
-                                format!("✅ Successfully removed {} joinsound!", remove_context)
+                                format!("✅ Successfully removed {remove_context} joinsound!")
                                     .to_string(),
                             ),
                         )
@@ -307,7 +307,7 @@ async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
                     message
                         .edit(
                             ctx,
-                            poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                            poise::CreateReply::default().content(format!("❌ Error: {why}")),
                         )
                         .await
                 }
@@ -439,7 +439,7 @@ async fn leave(ctx: Context<'_>) -> Result<(), Error> {
                         if let Err(why) = message
                             .edit(
                                 ctx,
-                                poise::CreateReply::default().content(format!("❌ Error: {}", why)),
+                                poise::CreateReply::default().content(format!("❌ Error: {why}")),
                             )
                             .await
                         {

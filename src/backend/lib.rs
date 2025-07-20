@@ -185,8 +185,7 @@ pub async fn upload_sound(
 ) -> Result<(), Error> {
     // check if attachment is a video
     if !validate_attachment(attachment.clone()) {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(Box::new(std::io::Error::other(
             "Attachment is not a video or an audio file.",
         )));
     }
@@ -194,17 +193,14 @@ pub async fn upload_sound(
     match attachments::get_length(attachment.clone()).await {
         Ok(length) => {
             if length > Duration::seconds(15) {
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Video is too long",
-                )))
+                Err(Box::new(std::io::Error::other("Video is too long")))
             } else {
                 let file_path = attachments::download_sound(attachment, user_id, guild_id).await?;
                 database::create_new_joinsound(user_id, guild_id, file_path);
                 Ok(())
             }
         }
-        Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
+        Err(e) => Err(Box::new(std::io::Error::other(e))),
     }
 }
 
@@ -215,8 +211,7 @@ pub async fn update_sound(
 ) -> Result<(), Error> {
     // check if attachment is a video
     if !validate_attachment(attachment.clone()) {
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(Box::new(std::io::Error::other(
             "Attachment is not a video or an audio file.",
         )));
     }
@@ -224,10 +219,7 @@ pub async fn update_sound(
     match attachments::get_length(attachment.clone()).await {
         Ok(length) => {
             if length > Duration::seconds(15) {
-                Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Video is too long",
-                )))
+                Err(Box::new(std::io::Error::other("Video is too long")))
             } else {
                 // remove the sound first
                 if has_sound(user_id, guild_id) {
@@ -239,7 +231,7 @@ pub async fn update_sound(
                 Ok(())
             }
         }
-        Err(e) => Err(Box::new(std::io::Error::new(std::io::ErrorKind::Other, e))),
+        Err(e) => Err(Box::new(std::io::Error::other(e))),
     }
 }
 
@@ -286,10 +278,7 @@ pub async fn remove_sound(
             {
                 file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "No sound to remove!",
-                )));
+                return Err(Box::new(std::io::Error::other("No sound to remove!")));
             }
 
             diesel::delete(schema::joinsounds::table)
@@ -310,10 +299,7 @@ pub async fn remove_sound(
             {
                 file::delete_file(PathBuf::from(joinsound_path)).await?;
             } else {
-                return Err(Box::new(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "No sound to remove!",
-                )));
+                return Err(Box::new(std::io::Error::other("No sound to remove!")));
             }
 
             diesel::delete(schema::joinsounds::table)
@@ -325,10 +311,7 @@ pub async fn remove_sound(
             Ok(())
         }
     } else {
-        Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "No sound to remove!",
-        )))
+        Err(Box::new(std::io::Error::other("No sound to remove!")))
     }
 }
 

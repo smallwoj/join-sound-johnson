@@ -9,7 +9,7 @@ pub async fn register_commands<U, E>(
     guild: Option<u64>,
 ) -> Result<Data, Error> {
     if let Some(guild_id) = guild {
-        println!("registering all commands in guild {}", guild_id);
+        println!("registering all commands in guild {guild_id}");
         poise::builtins::register_in_guild(
             ctx,
             &framework.options().commands,
@@ -28,7 +28,7 @@ pub async fn delete_commands(
     guild: Option<u64>,
 ) -> Result<Data, Error> {
     if let Some(guild_id) = guild {
-        println!("deleting all commands locally in guild {}", guild_id);
+        println!("deleting all commands locally in guild {guild_id}");
         poise::serenity_prelude::GuildId::new(guild_id)
             .set_commands(ctx, vec![])
             .await?;
