@@ -144,8 +144,5 @@ pub async fn download_sound(
     if let Some(path_str) = file.to_str() {
         return Ok(String::from(path_str));
     }
-    Err(Box::new(std::io::Error::new(
-        std::io::ErrorKind::Other,
-        "Could not save sound",
-    )))
+    Err(Box::new(std::io::Error::other("Could not save sound")))
 }
