@@ -7,16 +7,19 @@ use jsj_backend::database;
 use jsj_backend::file::save_file_on_s3;
 use jsj_backend::schema;
 use tokio::fs;
+
+type JoinsoundEntry = (
+    i32,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<chrono::NaiveDateTime>,
+);
+
 pub async fn migrate_to_s3() {
     let connection = &mut database::connect();
 
-    let results: Vec<(
-        i32,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<chrono::NaiveDateTime>,
-    )> = schema::joinsounds::table
+    let results: Vec<JoinsoundEntry> = schema::joinsounds::table
         .select(schema::joinsounds::all_columns)
         .load(connection)
         .expect("Failed to retrieve all joinsounds");
