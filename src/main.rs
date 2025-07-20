@@ -45,6 +45,7 @@ enum SubCommands {
         guild: Option<u64>,
     },
     MigrateDb,
+    MigrateMediaToS3,
 }
 
 /// Get a cool response from the server.
@@ -625,6 +626,10 @@ async fn main() {
                     }
                     Some(SubCommands::MigrateDb) => {
                         subcommands::migrate_db::migrate_db();
+                        std::process::exit(0);
+                    }
+                    Some(SubCommands::MigrateMediaToS3) => {
+                        subcommands::media_migration::migrate_to_s3();
                         std::process::exit(0);
                     }
                     _ => {}
