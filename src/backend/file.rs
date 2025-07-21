@@ -12,7 +12,11 @@ use tokio::{
 use tracing::warn;
 
 fn is_s3_mode() -> bool {
-    env::var("S3_ENDPOINT").is_ok()
+    if let Ok(s3_enabled) = env::var("S3_ENABLED") {
+        !s3_enabled.is_empty()
+    } else {
+        false
+    }
 }
 
 async fn get_bucket() -> Result<Bucket, S3Error> {
