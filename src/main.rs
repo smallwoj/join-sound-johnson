@@ -46,6 +46,7 @@ enum SubCommands {
     },
     MigrateDb,
     MigrateMediaToS3,
+    MigrateMediaToFileSystem,
 }
 
 /// Get a cool response from the server.
@@ -630,6 +631,10 @@ async fn main() {
                     }
                     Some(SubCommands::MigrateMediaToS3) => {
                         subcommands::media_migration::migrate_to_s3().await;
+                        std::process::exit(0);
+                    }
+                    Some(SubCommands::MigrateMediaToFileSystem) => {
+                        subcommands::media_migration::migrate_to_file_system().await;
                         std::process::exit(0);
                     }
                     _ => {}
