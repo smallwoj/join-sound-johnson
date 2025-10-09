@@ -36,21 +36,19 @@ pub async fn event_listener(
                         let last_played_local_option =
                             backend::get_last_played(new.user_id, Some(guild_id));
                         let last_played_global_option = backend::get_last_played(new.user_id, None);
-                        let last_played = if last_played_local_option.is_some()
-                            && last_played_global_option.is_some()
-                        {
-                            let last_played_global = last_played_global_option.unwrap();
-                            let last_played_local = last_played_local_option.unwrap();
-                            if last_played_local > last_played_global {
-                                Some(last_played_local)
-                            } else {
-                                Some(last_played_global)
-                            }
-                        } else if let Some(last_played_local) = last_played_local_option {
-                            Some(last_played_local)
-                        } else {
-                            last_played_global_option
-                        };
+                        let last_played =
+                            match (last_played_local_option, last_played_global_option) {
+                                (Some(last_played_local), Some(last_played_global)) => {
+                                    if last_played_local > last_played_global {
+                                        Some(last_played_local)
+                                    } else {
+                                        Some(last_played_global)
+                                    }
+                                }
+                                (Some(last_played_local), None) => Some(last_played_local),
+                                (None, Some(last_played_global)) => Some(last_played_global),
+                                (None, None) => None,
+                            };
 
                         if let Some(last_played) = last_played {
                             if chrono::Utc::now().naive_utc().and_utc().timestamp()
