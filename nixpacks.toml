@@ -1,0 +1,8 @@
+[variables]
+NIXPACKS_NO_MUSL='1'
+
+[phases.setup]
+nixPkgs = ['rust-bin.stable.latest.default', 'pkg-config', 'cmake', 'ffmpeg', 'openssl', 'diesel-cli', 'rustPlatform.bindgenHook', 'libmysqlclient']
+nixLibs = ['...', 'pkg-config', 'openssl', 'libopus', 'libmysqlclient', 'libz', 'zstd', 'stdenv.cc.cc.lib', 'libgcc']
+aptPkgs = ['...', 'default-libmysqlclient-dev', 'libzstd-dev', 'build-essential']
+
