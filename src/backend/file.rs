@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
+use s3::{creds::Credentials, error::S3Error, Bucket, Region};
 use tokio::{
     fs::{create_dir_all, remove_dir, remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
@@ -14,6 +14,14 @@ use tracing::warn;
 fn is_s3_mode() -> bool {
     if let Ok(s3_enabled) = env::var("S3_ENABLED") {
         !s3_enabled.is_empty()
+    } else {
+        false
+    }
+}
+
+pub fn use_path_style() -> bool {
+    if let Ok(use_path_style) = env::var("S3_USE_PATH_STYLE") {
+        !use_path_style.is_empty()
     } else {
         false
     }
@@ -39,19 +47,12 @@ async fn get_bucket() -> Result<Bucket, S3Error> {
         None,
     )?;
 
-    let mut bucket =
-        Bucket::new(&bucket_name, region.clone(), credentials.clone())?.with_path_style();
+    let mut bucket = Bucket::new(&bucket_name, region.clone(), credentials.clone())?;
 
-    if !bucket.exists().await? {
-        bucket = Bucket::create_with_path_style(
-            &bucket_name,
-            region,
-            credentials,
-            BucketConfiguration::default(),
-        )
-        .await?
-        .bucket;
+    if use_path_style() {
+        bucket = bucket.with_path_style();
     }
+
     Ok(*bucket)
 }
 
