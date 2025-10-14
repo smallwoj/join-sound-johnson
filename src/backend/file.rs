@@ -19,6 +19,14 @@ fn is_s3_mode() -> bool {
     }
 }
 
+pub fn use_path_style() -> bool {
+    if let Ok(use_path_style) = env::var("S3_USE_PATH_STYLE") {
+        !use_path_style.is_empty()
+    } else {
+        false
+    }
+}
+
 async fn get_bucket() -> Result<Bucket, S3Error> {
     let bucket_name = env::var("S3_BUCKET_NAME")
         .unwrap_or(String::from("join-sound-johnson"))
@@ -39,19 +47,12 @@ async fn get_bucket() -> Result<Bucket, S3Error> {
         None,
     )?;
 
-    let mut bucket =
-        Bucket::new(&bucket_name, region.clone(), credentials.clone())?.with_path_style();
+    let mut bucket = Bucket::new(&bucket_name, region.clone(), credentials.clone())?;
 
-    if !bucket.exists().await? {
-        bucket = Bucket::create_with_path_style(
-            &bucket_name,
-            region,
-            credentials,
-            BucketConfiguration::default(),
-        )
-        .await?
-        .bucket;
+    if use_path_style() {
+        bucket = bucket.with_path_style();
     }
+
     Ok(*bucket)
 }
 

@@ -10,7 +10,6 @@ use jsj_backend::file;
 use jsj_backend::schema;
 use s3::creds::Credentials;
 use s3::Bucket;
-use s3::BucketConfiguration;
 use s3::Region;
 use tokio::fs;
 use tokio::fs::create_dir_all;
@@ -107,20 +106,8 @@ pub async fn migrate_to_file_system() {
         .unwrap()
         .with_path_style();
 
-    if !bucket
-        .exists()
-        .await
-        .expect("Failed to check existence of bucket")
-    {
-        bucket = Bucket::create_with_path_style(
-            &bucket_name,
-            region,
-            credentials,
-            BucketConfiguration::default(),
-        )
-        .await
-        .unwrap()
-        .bucket;
+    if file::use_path_style() {
+        bucket = bucket.with_path_style();
     }
 
     let connection = &mut database::connect();
