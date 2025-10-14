@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use s3::{creds::Credentials, error::S3Error, Bucket, BucketConfiguration, Region};
+use s3::{creds::Credentials, error::S3Error, Bucket, Region};
 use tokio::{
     fs::{create_dir_all, remove_dir, remove_file, File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
