@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::path::Path;
 
 use jsj_backend as backend;
@@ -47,6 +48,14 @@ enum SubCommands {
     MigrateDb,
     MigrateMediaToS3,
     MigrateMediaToFileSystem,
+}
+
+fn changing_sounds_disabled() -> bool {
+    if let Ok(disabled) = env::var("DISABLE_JOINSOUND_UPDATES") {
+        !disabled.is_empty()
+    } else {
+        false
+    }
 }
 
 /// Get a cool response from the server.
@@ -106,6 +115,11 @@ Set a sound to play everytime you join a voice channel!",
 )]
 async fn set_sound(ctx: Context<'_>, attachment: Attachment, local: bool) -> Result<(), Error> {
     info!("Trying to set sound");
+    if changing_sounds_disabled() {
+        ctx.say("❌ Setting Joinsounds is temporarily disabled. Please try again shortly.")
+            .await?;
+        return Ok(());
+    }
     if ctx.guild().is_none() && local {
         ctx.say("❌ Must be in the target server to set local joinsound")
             .await?;
@@ -273,6 +287,11 @@ async fn view(
 async fn _remove(ctx: Context<'_>, local: bool) -> Result<(), Error> {
     info!("Removing joinsound");
     ctx.defer_ephemeral().await?;
+    if changing_sounds_disabled() {
+        ctx.say("❌ Removing Joinsounds is temporarily disabled. Please try again shortly.")
+            .await?;
+        return Ok(());
+    }
     if ctx.guild().is_none() && local {
         ctx.say("❌ Must be in a server to remove local joinsound")
             .await?;
@@ -365,6 +384,11 @@ async fn remove_local(ctx: Context<'_>) -> Result<(), Error> {
     )
 )]
 async fn purge(ctx: Context<'_>) -> Result<(), Error> {
+    if changing_sounds_disabled() {
+        ctx.say("❌ Purging Joinsounds is temporarily disabled. Please try again shortly.")
+            .await?;
+        return Ok(());
+    }
     let interaction_uuid = ctx.id();
     let components = vec![CreateActionRow::Buttons(vec![CreateButton::new(format!(
         "{interaction_uuid}"
