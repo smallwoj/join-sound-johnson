@@ -35,7 +35,7 @@ indicatif = "0.18.0"
 [dependencies.serenity]
 default-features = false
 features = ["voice", "client", "gateway", "model", "cache"]
-version = "0.12.4"
+version = "0.12.5"
 
 [dependencies.symphonia]
 version = "0.5.4"
