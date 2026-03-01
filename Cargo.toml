@@ -1,6 +1,6 @@
 [package]
 name = "join-sound-johnson"
-version = "1.4.1"
+version = "1.4.2"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -26,7 +26,7 @@ regex = "1.11.1"
 tokio = { version = "1.41.1", features = ["macros", "rt-multi-thread"] }
 
 poise = { version = "0.6.1", features = ["collector", "cache"] }
-songbird = "0.4.6"
+songbird = { git = "https://github.com/beerpsi-forks/songbird.git", branch = "davey" }
 rustls = "0.23.17"
 rust-s3 = "0.35.1"
 clap = { version = "4.5.37", features = ["derive"] }
@@ -35,7 +35,7 @@ indicatif = "0.18.0"
 [dependencies.serenity]
 default-features = false
 features = ["voice", "client", "gateway", "model", "cache"]
-version = "0.12.4"
+version = "0.12.5"
 
 [dependencies.symphonia]
 version = "0.5.4"
